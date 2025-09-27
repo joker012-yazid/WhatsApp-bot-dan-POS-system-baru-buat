@@ -1,6 +1,7 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Code,
@@ -42,7 +43,13 @@ export default function Home() {
         <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 mb-8">
           A modern full-stack TypeScript starter with authentication, database, and UI components
         </p>
-        
+
+        <div className="flex justify-center mb-10">
+          <Button asChild size="lg" className="px-8 py-3 text-base">
+            <Link href="/documentation">Read the Implementation Guide</Link>
+          </Button>
+        </div>
+
         <HeroAuthButtons />
       </div>
 
