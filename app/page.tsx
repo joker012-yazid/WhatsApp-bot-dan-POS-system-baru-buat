@@ -1,14 +1,6 @@
 "use client";
-
+import { Card } from "@/components/ui/card";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -225,52 +217,30 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="container mx-auto px-4 pb-24">
-          <section className="relative mx-auto flex max-w-5xl flex-col items-center gap-8 py-12 text-center">
-            <Badge className="border border-slate-700 bg-slate-900/60 text-slate-200">
-              End-to-end automation for device service businesses
-            </Badge>
-            <h1 className="font-parkinsans text-4xl font-bold leading-tight text-slate-50 sm:text-5xl lg:text-6xl">
-              Build a conversational service business with a unified WhatsApp, CRM, and POS platform.
-            </h1>
-            <p className="max-w-3xl text-lg text-slate-300 sm:text-xl">
-              From the first WhatsApp ping to invoice payment and analytics, orchestrate every moment with AI, real-time dashboards, and enterprise-grade security.
-            </p>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Button asChild size="lg" className="bg-sky-500 text-slate-950 hover:bg-sky-400">
-                <Link href="/dashboard">
-                  Explore Operations Console
-                </Link>
-              </Button>
-              <HeroAuthButtons />
-            </div>
-            <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-3">
-              <Card className="border-slate-800 bg-slate-900/60">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-sky-400">+40%</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Faster service approvals with instant WhatsApp quotations.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card className="border-slate-800 bg-slate-900/60">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-emerald-400">24/7</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Conversational support that never sleeps, powered by AI.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-              <Card className="border-slate-800 bg-slate-900/60">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-amber-400">360°</CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Customer history, inventory, and finance in one workspace.
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-          </section>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
+          <Image
+            src="/codeguide-logo.png"
+            alt="CodeGuide Logo"
+            width={50}
+            height={50}
+            className="rounded-xl sm:w-[60px] sm:h-[60px]"
+          />
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent font-parkinsans">
+            Codeguide Starter Fullstack
+          </h1>
+        </div>
+        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 mb-8">
+          A modern full-stack TypeScript starter with authentication, database, and UI components
+        </p>
+
+        <div className="flex justify-center mb-10">
+          <Button asChild size="lg" className="px-8 py-3 text-base">
+            <Link href="/documentation">Read the Implementation Guide</Link>
+          </Button>
+        </div>
+
+        <HeroAuthButtons />
+      </div>
 
           <Separator className="my-12 bg-slate-800" />
 
