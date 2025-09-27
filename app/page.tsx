@@ -1,10 +1,18 @@
 "use client";
-import { Card } from "@/components/ui/card";
-import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButtons, HeroAuthButtons } from "@/components/auth-buttons";
+import Image from "next/image";
+import Link from "next/link";
 import {
   Activity,
   Bot,
@@ -242,6 +250,8 @@ export default function Home() {
         <HeroAuthButtons />
       </div>
 
+      <main>
+
           <Separator className="my-12 bg-slate-800" />
 
           <section className="mx-auto max-w-6xl space-y-8">
@@ -406,8 +416,7 @@ export default function Home() {
               </Button>
             </div>
           </section>
-        </main>
-      </div>
+      </main>
     </div>
   );
 }
