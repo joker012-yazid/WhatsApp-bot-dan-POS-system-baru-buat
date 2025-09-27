@@ -208,25 +208,25 @@ const governancePillars = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <main>
-        <div className="relative isolate overflow-hidden">
-          <div className="absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_65%)]" />
-          <header className="container mx-auto flex items-center justify-between px-4 py-6">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400">
-                <Bot className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="font-semibold">WhatsApp POS System</p>
-                <p className="text-xs text-slate-400">AI-powered repair & retail automation</p>
-              </div>
+      <div className="relative isolate overflow-hidden">
+        <div className="absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_65%)]" />
+        <header className="container mx-auto flex items-center justify-between px-4 py-6">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400">
+              <Bot className="h-5 w-5" />
+            </span>
+            <div>
+              <p className="font-semibold">WhatsApp POS System</p>
+              <p className="text-xs text-slate-400">AI-powered repair & retail automation</p>
             </div>
-            <div className="flex items-center gap-3">
-              <AuthButtons />
-              <ThemeToggle />
-            </div>
-          </header>
+          </div>
+          <div className="flex items-center gap-3">
+            <AuthButtons />
+            <ThemeToggle />
+          </div>
+        </header>
 
+        <main>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
             <Image
               src="/codeguide-logo.png"
@@ -250,11 +250,10 @@ export default function Home() {
           </div>
 
           <HeroAuthButtons />
-        </div>
 
-        <Separator className="my-12 bg-slate-800" />
+          <Separator className="my-12 bg-slate-800" />
 
-        <section className="mx-auto max-w-6xl space-y-8">
+          <section className="mx-auto max-w-6xl space-y-8">
             <div className="flex flex-col gap-2 text-center">
               <Badge className="mx-auto border border-slate-700 bg-slate-900/60 text-slate-200">
                 Capability Pillars
@@ -292,11 +291,11 @@ export default function Home() {
                 </Card>
               ))}
             </div>
-        </section>
+          </section>
 
-        <Separator className="my-16 bg-slate-800" />
+          <Separator className="my-16 bg-slate-800" />
 
-        <section className="mx-auto max-w-6xl space-y-10">
+          <section className="mx-auto max-w-6xl space-y-10">
             <div className="flex flex-col gap-2 text-center">
               <Badge className="mx-auto border border-slate-700 bg-slate-900/60 text-slate-200">
                 Guided Journeys
@@ -393,11 +392,11 @@ export default function Home() {
                 ))}
               </CardContent>
             </Card>
-        </section>
+          </section>
 
-        <Separator className="my-16 bg-slate-800" />
+          <Separator className="my-16 bg-slate-800" />
 
-        <section className="mx-auto max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-10 text-center">
+          <section className="mx-auto max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-10 text-center">
             <Badge className="border border-slate-700 bg-slate-900/60 text-slate-200">
               Launch Ready
             </Badge>
@@ -415,8 +414,9 @@ export default function Home() {
                 <Link href="/documentation">View Implementation Guide</Link>
               </Button>
             </div>
-        </section>
-      </main>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
