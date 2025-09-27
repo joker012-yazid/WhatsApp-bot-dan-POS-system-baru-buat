@@ -1,16 +1,5 @@
 "use client";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { AuthButtons, HeroAuthButtons } from "@/components/auth-buttons";
+
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -24,6 +13,18 @@ import {
   Users,
   Workflow,
 } from "lucide-react";
+import { AuthButtons, HeroAuthButtons } from "@/components/auth-buttons";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 const featureSections = [
   {
