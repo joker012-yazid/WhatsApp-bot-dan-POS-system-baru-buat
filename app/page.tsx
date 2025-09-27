@@ -252,10 +252,9 @@ export default function Home() {
       </div>
 
       <main>
+        <Separator className="my-12 bg-slate-800" />
 
-          <Separator className="my-12 bg-slate-800" />
-
-          <section className="mx-auto max-w-6xl space-y-8">
+        <section className="mx-auto max-w-6xl space-y-8">
             <div className="flex flex-col gap-2 text-center">
               <Badge className="mx-auto border border-slate-700 bg-slate-900/60 text-slate-200">
                 Capability Pillars
@@ -293,11 +292,11 @@ export default function Home() {
                 </Card>
               ))}
             </div>
-          </section>
+        </section>
 
-          <Separator className="my-16 bg-slate-800" />
+        <Separator className="my-16 bg-slate-800" />
 
-          <section className="mx-auto max-w-6xl space-y-10">
+        <section className="mx-auto max-w-6xl space-y-10">
             <div className="flex flex-col gap-2 text-center">
               <Badge className="mx-auto border border-slate-700 bg-slate-900/60 text-slate-200">
                 Guided Journeys
@@ -394,11 +393,11 @@ export default function Home() {
                 ))}
               </CardContent>
             </Card>
-          </section>
+        </section>
 
-          <Separator className="my-16 bg-slate-800" />
+        <Separator className="my-16 bg-slate-800" />
 
-          <section className="mx-auto max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-10 text-center">
+        <section className="mx-auto max-w-5xl rounded-3xl border border-slate-800 bg-slate-900/70 p-10 text-center">
             <Badge className="border border-slate-700 bg-slate-900/60 text-slate-200">
               Launch Ready
             </Badge>
@@ -416,7 +415,7 @@ export default function Home() {
                 <Link href="/documentation">View Implementation Guide</Link>
               </Button>
             </div>
-          </section>
+        </section>
       </main>
     </div>
   );
