@@ -227,7 +227,7 @@ export default function Home() {
           </div>
         </header>
 
-        <main>
+        <main className="px-4 pb-20">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
             <Image
               src="/codeguide-logo.png"
