@@ -208,50 +208,50 @@ const governancePillars = [
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="relative isolate overflow-hidden">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_65%)]" />
-        <header className="container mx-auto flex items-center justify-between px-4 py-6">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400">
-              <Bot className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="font-semibold">WhatsApp POS System</p>
-              <p className="text-xs text-slate-400">AI-powered repair & retail automation</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <AuthButtons />
-            <ThemeToggle />
-          </div>
-        </header>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
-          <Image
-            src="/codeguide-logo.png"
-            alt="CodeGuide Logo"
-            width={50}
-            height={50}
-            className="rounded-xl sm:w-[60px] sm:h-[60px]"
-          />
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent font-parkinsans">
-            Codeguide Starter Fullstack
-          </h1>
-        </div>
-        <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 mb-8">
-          A modern full-stack TypeScript starter with authentication, database, and UI components
-        </p>
-
-        <div className="flex justify-center mb-10">
-          <Button asChild size="lg" className="px-8 py-3 text-base">
-            <Link href="/documentation">Read the Implementation Guide</Link>
-          </Button>
-        </div>
-
-        <HeroAuthButtons />
-      </div>
-
       <main>
+        <div className="relative isolate overflow-hidden">
+          <div className="absolute inset-x-0 top-0 -z-10 h-[480px] bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.25),_transparent_65%)]" />
+          <header className="container mx-auto flex items-center justify-between px-4 py-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/10 text-sky-400">
+                <Bot className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-semibold">WhatsApp POS System</p>
+                <p className="text-xs text-slate-400">AI-powered repair & retail automation</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <AuthButtons />
+              <ThemeToggle />
+            </div>
+          </header>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-4">
+            <Image
+              src="/codeguide-logo.png"
+              alt="CodeGuide Logo"
+              width={50}
+              height={50}
+              className="rounded-xl sm:w-[60px] sm:h-[60px]"
+            />
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent font-parkinsans">
+              Codeguide Starter Fullstack
+            </h1>
+          </div>
+          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto px-4 mb-8">
+            A modern full-stack TypeScript starter with authentication, database, and UI components
+          </p>
+
+          <div className="flex justify-center mb-10">
+            <Button asChild size="lg" className="px-8 py-3 text-base">
+              <Link href="/documentation">Read the Implementation Guide</Link>
+            </Button>
+          </div>
+
+          <HeroAuthButtons />
+        </div>
+
         <Separator className="my-12 bg-slate-800" />
 
         <section className="mx-auto max-w-6xl space-y-8">
