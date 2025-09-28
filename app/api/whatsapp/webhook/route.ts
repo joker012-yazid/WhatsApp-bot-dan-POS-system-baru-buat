@@ -8,6 +8,7 @@ import {
   whatsappMessages,
   whatsappSessions,
 } from '@/db/schema/app';
+import logger from '@/lib/logger';
 import { ensureWhatsAppJid, parseRemoteJid, sendWhatsAppTextMessage } from '@/lib/wa';
 
 export const runtime = 'nodejs';
@@ -221,7 +222,14 @@ export async function POST(request: NextRequest): Promise<Response> {
       if (reply) {
         try {
           const recipient = ensureWhatsAppJid(data.key.remoteJid);
-          await sendWhatsAppTextMessage({ to: recipient, message: reply });
+          await sendWhatsAppTextMessage({
+            to: recipient,
+            message: reply,
+            metadata: {
+              source: 'auto-reply',
+              sessionId: session.id,
+            },
+          });
           await db.insert(whatsappMessages).values({
             sessionId: session.id,
             messageContent: reply,
@@ -238,7 +246,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             status: 'failed',
             timestamp: new Date(),
           });
-          console.error('Failed to send auto-reply', error);
+          logger.error({ err: error }, 'Failed to send auto-reply');
         }
       }
     }

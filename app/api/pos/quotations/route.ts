@@ -9,6 +9,7 @@ import {
   getQuotationWithRelations,
   toPgNumeric,
 } from '@/lib/pos';
+import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
 
 export const runtime = 'nodejs';
@@ -55,7 +56,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
     return Response.json(quotation);
   } catch (error) {
-    console.error('Failed to load quotation', error);
+    logger.error({ err: error }, 'Failed to load quotation');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }
@@ -125,18 +126,25 @@ export async function POST(request: NextRequest): Promise<Response> {
       const message = `Halo ${quotationWithRelations.customer.name}! Quotation ${quotationWithRelations.quotationNumber} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
 
       try {
-        await sendWhatsAppTextMessage({
-          to: ensureWhatsAppJid(quotationWithRelations.customer.phone),
-          message,
-        });
+        await sendWhatsAppTextMessage(
+          {
+            to: ensureWhatsAppJid(quotationWithRelations.customer.phone),
+            message,
+            metadata: {
+              documentId: quotationWithRelations.id,
+              documentType: 'quotation',
+            },
+          },
+          { attempts: 3 },
+        );
       } catch (error) {
-        console.warn('Failed to send quotation WhatsApp notification', error);
+        logger.warn({ err: error }, 'Failed to send quotation WhatsApp notification');
       }
     }
 
     return Response.json(quotationWithRelations, { status: 201 });
   } catch (error) {
-    console.error('Failed to create quotation', error);
+    logger.error({ err: error }, 'Failed to create quotation');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }
