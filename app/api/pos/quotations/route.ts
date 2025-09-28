@@ -11,6 +11,7 @@ import {
 } from '@/lib/pos';
 import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
+import { getTicketById } from '@/lib/tickets';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,7 @@ const quoteStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expi
 
 const quoteSchema = z.object({
   customerId: z.string().uuid(),
+  ticketId: z.string().uuid().optional().nullable(),
   number: z.string().optional(),
   validUntil: z.string(),
   status: quoteStatusSchema.default('draft'),
@@ -81,6 +83,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         .values({
           number: quoteNumber,
           customerId: data.customerId,
+          ticketId: data.ticketId ?? null,
           validUntil,
           status: data.status,
           subtotal: toPgNumeric(subtotal),
@@ -121,7 +124,11 @@ export async function POST(request: NextRequest): Promise<Response> {
       const validUntilFormatted = quoteWithRelations.validUntil
         ? new Date(quoteWithRelations.validUntil).toLocaleDateString('en-MY')
         : '';
-      const message = `Halo ${quoteWithRelations.customer.name}! Quotation ${quoteWithRelations.number} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
+      const ticketReference = quoteWithRelations.ticketId
+        ? await getTicketById(quoteWithRelations.ticketId)
+        : null;
+      const ticketNote = ticketReference ? ` Rujukan tiket #${ticketReference.ticketNumber}.` : '';
+      const message = `Halo ${quoteWithRelations.customer.name}! Quotation ${quoteWithRelations.number} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}.${ticketNote} Balas mesej ini untuk sebarang pertanyaan.`;
 
       try {
         await sendWhatsAppTextMessage(
@@ -131,6 +138,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             metadata: {
               documentId: quoteWithRelations.id,
               documentType: 'quotation',
+              ticketId: quoteWithRelations.ticketId ?? null,
             },
           },
           { attempts: 3 },

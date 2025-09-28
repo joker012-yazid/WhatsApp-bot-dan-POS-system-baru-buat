@@ -11,6 +11,7 @@ import {
 } from '@/lib/pos';
 import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
+import { getTicketById } from '@/lib/tickets';
 
 export const runtime = 'nodejs';
 
@@ -27,6 +28,7 @@ const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'partial', 'overdue
 const invoiceSchema = z.object({
   customerId: z.string().uuid(),
   quoteId: z.string().uuid().optional().nullable(),
+  ticketId: z.string().uuid().optional().nullable(),
   number: z.string().optional(),
   issuedAt: z.string().optional(),
   dueAt: z.string().optional(),
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         .values({
           number: invoiceNumber,
           customerId: data.customerId,
+          ticketId: data.ticketId ?? null,
           quoteId: data.quoteId ?? null,
           issuedAt,
           dueAt,
@@ -129,7 +132,11 @@ export async function POST(request: NextRequest): Promise<Response> {
       const dueDateFormatted = invoiceWithRelations.dueAt
         ? new Date(invoiceWithRelations.dueAt).toLocaleDateString('en-MY')
         : '';
-      const message = `Halo ${invoiceWithRelations.customer.name}! Invois ${invoiceWithRelations.number} berjumlah ${totalFormatted}. Tarikh akhir: ${dueDateFormatted}. Sila hubungi kami jika perlukan bantuan.`;
+      const ticketReference = invoiceWithRelations.ticketId
+        ? await getTicketById(invoiceWithRelations.ticketId)
+        : null;
+      const ticketNote = ticketReference ? ` Rujukan tiket #${ticketReference.ticketNumber}.` : '';
+      const message = `Halo ${invoiceWithRelations.customer.name}! Invois ${invoiceWithRelations.number} berjumlah ${totalFormatted}. Tarikh akhir: ${dueDateFormatted}.${ticketNote} Sila hubungi kami jika perlukan bantuan.`;
 
       try {
         await sendWhatsAppTextMessage(
@@ -139,6 +146,7 @@ export async function POST(request: NextRequest): Promise<Response> {
             metadata: {
               documentId: invoiceWithRelations.id,
               documentType: 'invoice',
+              ticketId: invoiceWithRelations.ticketId ?? null,
             },
           },
           { attempts: 3 },
