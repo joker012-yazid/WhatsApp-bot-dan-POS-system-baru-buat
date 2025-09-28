@@ -9,6 +9,7 @@ import {
   getInvoiceWithRelations,
   toPgNumeric,
 } from '@/lib/pos';
+import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
 
 export const runtime = 'nodejs';
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     }
     return Response.json(invoice);
   } catch (error) {
-    console.error('Failed to load invoice', error);
+    logger.error({ err: error }, 'Failed to load invoice');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }
@@ -131,18 +132,25 @@ export async function POST(request: NextRequest): Promise<Response> {
       const message = `Halo ${invoiceWithRelations.customer.name}! Invois ${invoiceWithRelations.invoiceNumber} berjumlah ${totalFormatted}. Tarikh akhir: ${dueDateFormatted}. Sila hubungi kami jika perlukan bantuan.`;
 
       try {
-        await sendWhatsAppTextMessage({
-          to: ensureWhatsAppJid(invoiceWithRelations.customer.phone),
-          message,
-        });
+        await sendWhatsAppTextMessage(
+          {
+            to: ensureWhatsAppJid(invoiceWithRelations.customer.phone),
+            message,
+            metadata: {
+              documentId: invoiceWithRelations.id,
+              documentType: 'invoice',
+            },
+          },
+          { attempts: 3 },
+        );
       } catch (error) {
-        console.warn('Failed to send invoice WhatsApp notification', error);
+        logger.warn({ err: error }, 'Failed to send invoice WhatsApp notification');
       }
     }
 
     return Response.json(invoiceWithRelations, { status: 201 });
   } catch (error) {
-    console.error('Failed to create invoice', error);
+    logger.error({ err: error }, 'Failed to create invoice');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }
