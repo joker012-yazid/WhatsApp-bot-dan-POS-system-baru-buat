@@ -235,8 +235,12 @@ app.post('/send', async (req, res) => {
     }
 
     const jid = ensureWhatsAppJid(to);
-    await client.sendMessage(jid, { text });
-    res.json({ success: true });
+    const result = await client.sendMessage(jid, { text });
+    res.json({
+      success: true,
+      messageId: result?.key?.id || null,
+      status: result?.status || 'sent',
+    });
   } catch (error) {
     logger.error({ err: error }, 'Failed to send message');
     res.status(500).json({ error: 'Failed to send message' });

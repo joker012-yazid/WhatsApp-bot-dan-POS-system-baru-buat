@@ -24,11 +24,30 @@ export interface TicketWorkflowMessage {
   metadata?: Record<string, unknown>
 }
 
-export async function sendTicketWorkflowWhatsAppMessage(payload: TicketWorkflowMessage): Promise<void> {
+type WhatsAppMessageRecord = typeof waMessages.$inferSelect
+type WhatsAppMessageStatus = WhatsAppMessageRecord['status']
+
+const VALID_MESSAGE_STATUSES: readonly WhatsAppMessageStatus[] = [
+  'pending',
+  'sent',
+  'delivered',
+  'read',
+  'failed',
+  'received',
+  'deleted',
+]
+
+function isValidMessageStatus(value: unknown): value is WhatsAppMessageStatus {
+  return typeof value === 'string' && (VALID_MESSAGE_STATUSES as readonly string[]).includes(value)
+}
+
+export async function sendTicketWorkflowWhatsAppMessage(
+  payload: TicketWorkflowMessage,
+): Promise<WhatsAppMessageRecord | null> {
   const normalized = normalizePhoneNumber(payload.phone)
   if (!normalized) {
     logger.warn({ customerId: payload.customerId }, 'Skipping WhatsApp send: invalid phone number')
-    return
+    return null
   }
 
   const jid = ensureWhatsAppJid(normalized)
@@ -61,40 +80,52 @@ export async function sendTicketWorkflowWhatsAppMessage(payload: TicketWorkflowM
   }
 
   try {
-    await sendWhatsAppTextMessage({
+    const sendResult = await sendWhatsAppTextMessage({
       to: jid,
       text: payload.text,
       metadata,
     })
 
-    await db.insert(waMessages).values({
-      sessionId,
-      customerId: payload.customerId,
-      ticketId: payload.ticketId,
-      direction: 'out',
-      status: 'sent',
-      body: payload.text,
-      sentAt,
-      metadata: {
-        ...metadata,
-        normalizedRecipient: normalized,
-      },
-    })
+    const status = isValidMessageStatus(sendResult?.status) ? sendResult?.status : 'sent'
+    const [record] = await db
+      .insert(waMessages)
+      .values({
+        sessionId,
+        customerId: payload.customerId,
+        ticketId: payload.ticketId,
+        direction: 'out',
+        status,
+        body: payload.text,
+        sentAt,
+        messageId: sendResult?.messageId ?? null,
+        metadata: {
+          ...metadata,
+          normalizedRecipient: normalized,
+        },
+      })
+      .returning()
+
+    return record ?? null
   } catch (error) {
     logger.warn({ err: error, ticketId: payload.ticketId }, 'Failed to send ticket workflow WhatsApp message')
-    await db.insert(waMessages).values({
-      sessionId,
-      customerId: payload.customerId,
-      ticketId: payload.ticketId,
-      direction: 'out',
-      status: 'failed',
-      body: payload.text,
-      sentAt,
-      metadata: {
-        ...metadata,
-        normalizedRecipient: normalized,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-    })
+    const [record] = await db
+      .insert(waMessages)
+      .values({
+        sessionId,
+        customerId: payload.customerId,
+        ticketId: payload.ticketId,
+        direction: 'out',
+        status: 'failed',
+        body: payload.text,
+        sentAt,
+        metadata: {
+          ...metadata,
+          normalizedRecipient: normalized,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
+      })
+      .returning()
+
+    return record ?? null
   }
 }

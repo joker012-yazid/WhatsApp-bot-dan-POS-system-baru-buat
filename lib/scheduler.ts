@@ -5,10 +5,11 @@ import { differenceInCalendarDays, subDays } from 'date-fns'
 import { and, eq, inArray, lte, sql } from 'drizzle-orm'
 
 import { db } from '@/db'
-import { customers, reminderLog, tickets, waMessages } from '@/db/schema'
+import { customers, reminderLog, tickets } from '@/db/schema'
 import env from '@/env.mjs'
 import logger from '@/lib/logger'
 import type { TicketWorkflowStage } from '@/lib/wa-messaging'
+import { sendTicketWorkflowWhatsAppMessage } from '@/lib/wa-messaging'
 import { normalizePhoneNumber } from '@/lib/wa'
 
 const REMINDER_CONTEXT = 'ticket_awaiting_approval'
@@ -105,7 +106,7 @@ async function runTicketApprovalReminderJob(): Promise<void> {
       ? await db
           .select({
             ticketId: reminderLog.ticketId,
-            metadata: reminderLog.metadata,
+            kind: reminderLog.kind,
           })
           .from(reminderLog)
           .where(
@@ -123,17 +124,8 @@ async function runTicketApprovalReminderJob(): Promise<void> {
         continue
       }
 
-      const metadata = (log.metadata ?? {}) as Record<string, unknown>
-      if (metadata?.context !== REMINDER_CONTEXT) {
-        continue
-      }
-
-      const thresholdValue = Number(metadata.thresholdDays)
-      if (!Number.isFinite(thresholdValue)) {
-        continue
-      }
-
       const thresholds = sentThresholds.get(log.ticketId) ?? new Set<number>()
+      const thresholdValue = log.kind === 'day1' ? 1 : log.kind === 'day20' ? 20 : 30
       thresholds.add(thresholdValue)
       sentThresholds.set(log.ticketId, thresholds)
     }
@@ -153,7 +145,6 @@ async function runTicketApprovalReminderJob(): Promise<void> {
         continue
       }
 
-      const sessionId = normalizedPhone.replace(/^\+/, '')
       const message = buildReminderMessage(ticket, bucket, ageInDays)
 
       const metadata = {
@@ -166,25 +157,32 @@ async function runTicketApprovalReminderJob(): Promise<void> {
       }
 
       try {
-        const [queuedMessage] = await db
-          .insert(waMessages)
-          .values({
-            sessionId,
-            customerId: ticket.customerId,
-            ticketId: ticket.ticketId,
-            direction: 'out',
-            status: 'pending',
-            body: message,
-            metadata,
-          })
-          .returning({ id: waMessages.id })
+        const reminderKind = bucket.days === 1 ? 'day1' : bucket.days === 20 ? 'day20' : 'day30'
+
+        const queuedMessage = await sendTicketWorkflowWhatsAppMessage({
+          customerId: ticket.customerId,
+          ticketId: ticket.ticketId,
+          phone: normalizedPhone,
+          text: message,
+          stage: REMINDER_STAGE,
+          metadata,
+        })
+
+        if (!queuedMessage) {
+          logger.warn({ ticketId: ticket.ticketId }, 'Reminder WhatsApp message was not queued')
+          continue
+        }
 
         await db.insert(reminderLog).values({
           ticketId: ticket.ticketId,
-          waMessageId: queuedMessage?.id,
-          kind: bucket.days === 1 ? 'day1' : bucket.days === 20 ? 'day20' : 'day30',
-          sentAt: now,
-          metadata,
+          waMessageId: queuedMessage.id,
+          kind: reminderKind,
+          sentAt: queuedMessage.sentAt ?? now,
+          metadata: {
+            ...metadata,
+            waMessageStatus: queuedMessage.status,
+            waMessageRemoteId: queuedMessage.messageId ?? null,
+          },
         })
 
         logged.add(bucket.days)
@@ -194,7 +192,8 @@ async function runTicketApprovalReminderJob(): Promise<void> {
           {
             ticketId: ticket.ticketId,
             thresholdDays: bucket.days,
-            waMessageId: queuedMessage?.id,
+            waMessageId: queuedMessage.id,
+            waMessageStatus: queuedMessage.status,
           },
           'Queued awaiting approval WhatsApp reminder',
         )
