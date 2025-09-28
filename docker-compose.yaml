@@ -56,7 +56,7 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_BETTER_AUTH_URL: ${NEXT_PUBLIC_BETTER_AUTH_URL:-http://localhost:3000}
       REDIS_URL: redis://redis:6379
-      WA_GATEWAY_URL: http://wa:3000
+      WA_OUTBOUND_URL: ${WA_OUTBOUND_URL:-http://wa:3000}
     ports:
       - "3000:3000"
     depends_on:
