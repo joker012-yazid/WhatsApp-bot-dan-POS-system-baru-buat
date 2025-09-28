@@ -5,16 +5,16 @@ import Link from "next/link"
 import Image from "next/image"
 import { useSession } from "@/lib/auth-client"
 import {
+  IconBrandWhatsapp,
   IconCamera,
-  IconChartBar,
   IconDashboard,
   IconDatabase,
   IconFileAi,
   IconFileDescription,
+  IconFileInvoice,
   IconFileWord,
-  IconFolder,
   IconHelp,
-  IconListDetails,
+  IconPackage,
   IconReport,
   IconSearch,
   IconSettings,
@@ -39,28 +39,28 @@ const staticData = {
   navMain: [
     {
       title: "Dashboard",
-      url: "#",
+      url: "/dashboard",
       icon: IconDashboard,
     },
     {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
+      title: "Customers",
+      url: "/customers",
       icon: IconUsers,
+    },
+    {
+      title: "Products",
+      url: "/products",
+      icon: IconPackage,
+    },
+    {
+      title: "Invoices",
+      url: "/invoices",
+      icon: IconFileInvoice,
+    },
+    {
+      title: "WhatsApp",
+      url: "/whatsapp",
+      icon: IconBrandWhatsapp,
     },
   ],
   navClouds: [
