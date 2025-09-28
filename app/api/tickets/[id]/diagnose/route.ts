@@ -120,7 +120,7 @@ export async function POST(
         customerId: ticket.customer.id,
         ticketId,
         phone: ticket.customer.phone,
-        stage: 'diagnosis_approval',
+        stage: 'awaiting_approval',
         text: data.approvalNotes ? `${approvalMessage} ${data.approvalNotes}` : approvalMessage,
         metadata: {
           approved: data.approved,

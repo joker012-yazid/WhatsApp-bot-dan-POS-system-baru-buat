@@ -177,7 +177,7 @@ export async function POST(
         customerId: ticket.customer.id,
         ticketId,
         phone: ticket.customer.phone,
-        stage: 'repair_update',
+        stage: 'repair_updates',
         text: messageParts.join(' '),
         metadata: {
           updateId: record.id,

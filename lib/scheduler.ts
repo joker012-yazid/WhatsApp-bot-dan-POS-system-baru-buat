@@ -12,7 +12,7 @@ import type { TicketWorkflowStage } from '@/lib/wa-messaging'
 import { normalizePhoneNumber } from '@/lib/wa'
 
 const REMINDER_CONTEXT = 'ticket_awaiting_approval'
-const REMINDER_STAGE: TicketWorkflowStage = 'diagnosis_approval'
+const REMINDER_STAGE: TicketWorkflowStage = 'awaiting_approval'
 
 const REMINDER_BUCKETS = [
   { days: 1 },
