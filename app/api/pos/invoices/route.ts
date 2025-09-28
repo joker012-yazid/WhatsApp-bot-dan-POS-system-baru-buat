@@ -135,7 +135,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         await sendWhatsAppTextMessage(
           {
             to: ensureWhatsAppJid(invoiceWithRelations.customer.phone),
-            message,
+            text: message,
             metadata: {
               documentId: invoiceWithRelations.id,
               documentType: 'invoice',
