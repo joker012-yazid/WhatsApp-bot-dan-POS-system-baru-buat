@@ -6,9 +6,9 @@ services:
     container_name: postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-appdb}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecret123}
     ports:
       - "5432:5432"
     volumes:
@@ -33,15 +33,13 @@ services:
     container_name: wa
     restart: unless-stopped
     environment:
-      PORT: 3000
-      APP_WEBHOOK_URL: http://app:3000/api/wa/webhook
+      PORT: 8080
+      APP_WEBHOOK_URL: http://app:3000/api/whatsapp/webhook
       LOG_LEVEL: info
     ports:
-      - "3001:3000"
+      - "8080:8080"
     volumes:
       - wa_store:/app/store
-    depends_on:
-      - app
 
   app:
     build:
@@ -56,13 +54,12 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       NEXT_PUBLIC_BETTER_AUTH_URL: ${NEXT_PUBLIC_BETTER_AUTH_URL:-http://localhost:3000}
       REDIS_URL: redis://redis:6379
-      WA_OUTBOUND_URL: ${WA_OUTBOUND_URL:-http://wa:3000}
+      WA_OUTBOUND_URL: ${WA_OUTBOUND_URL:-http://wa:8080/send}
     ports:
       - "3000:3000"
     depends_on:
       - postgres
       - redis
-      - wa
 
 volumes:
   pgdata:
