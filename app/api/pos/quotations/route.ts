@@ -2,11 +2,11 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { db } from '@/db';
-import { quotationItems, quotations } from '@/db/schema';
+import { quoteItems, quotes } from '@/db/schema';
 import {
   calculateTotals,
   formatDocumentNumber,
-  getQuotationWithRelations,
+  getQuoteWithRelations,
   toPgNumeric,
 } from '@/lib/pos';
 import logger from '@/lib/logger';
@@ -14,7 +14,7 @@ import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
 
 export const runtime = 'nodejs';
 
-const quotationItemSchema = z.object({
+const quoteItemSchema = z.object({
   productId: z.string().uuid().optional().nullable(),
   description: z.string().min(1, 'Description is required'),
   quantity: z.number().int().positive('Quantity must be greater than zero'),
@@ -22,17 +22,17 @@ const quotationItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
-const quotationStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']);
+const quoteStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']);
 
-const quotationSchema = z.object({
+const quoteSchema = z.object({
   customerId: z.string().uuid(),
   number: z.string().optional(),
   validUntil: z.string(),
-  status: quotationStatusSchema.default('draft'),
+  status: quoteStatusSchema.default('draft'),
   taxRate: z.number().default(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
-  items: z.array(quotationItemSchema).min(1, 'At least one line item is required'),
+  items: z.array(quoteItemSchema).min(1, 'At least one line item is required'),
 });
 
 const currencyFormatter = new Intl.NumberFormat('en-MY', {
@@ -46,17 +46,17 @@ export async function GET(request: NextRequest): Promise<Response> {
   const number = url.searchParams.get('number');
 
   if (!id && !number) {
-    return Response.json({ error: 'Provide a quotation id or number' }, { status: 400 });
+    return Response.json({ error: 'Provide a quote id or number' }, { status: 400 });
   }
 
   try {
-    const quotation = await getQuotationWithRelations({ id, number });
-    if (!quotation) {
-      return Response.json({ error: 'Quotation not found' }, { status: 404 });
+    const quote = await getQuoteWithRelations({ id, number });
+    if (!quote) {
+      return Response.json({ error: 'Quote not found' }, { status: 404 });
     }
-    return Response.json(quotation);
+    return Response.json(quote);
   } catch (error) {
-    logger.error({ err: error }, 'Failed to load quotation');
+    logger.error({ err: error }, 'Failed to load quote');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }
@@ -64,22 +64,22 @@ export async function GET(request: NextRequest): Promise<Response> {
 
 export async function POST(request: NextRequest): Promise<Response> {
   const body = await request.json();
-  const parsed = quotationSchema.safeParse(body);
+  const parsed = quoteSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   const data = parsed.data;
   const { subtotal, taxAmount, total } = calculateTotals(data.items, data.taxRate);
-  const quotationNumber = data.number ?? formatDocumentNumber('QUO');
+  const quoteNumber = data.number ?? formatDocumentNumber('QUO');
   const validUntil = new Date(data.validUntil);
 
   try {
-    const createdQuotation = await db.transaction(async (tx) => {
-      const [quotation] = await tx
-        .insert(quotations)
+    const createdQuote = await db.transaction(async (tx) => {
+      const [quote] = await tx
+        .insert(quotes)
         .values({
-          number: quotationNumber,
+          number: quoteNumber,
           customerId: data.customerId,
           validUntil,
           status: data.status,
@@ -92,13 +92,13 @@ export async function POST(request: NextRequest): Promise<Response> {
         })
         .returning();
 
-      if (!quotation) {
-        throw new Error('Quotation insert did not return a record');
+      if (!quote) {
+        throw new Error('Quote insert did not return a record');
       }
 
-      await tx.insert(quotationItems).values(
+      await tx.insert(quoteItems).values(
         data.items.map((item) => ({
-          quotationId: quotation.id,
+          quoteId: quote.id,
           productId: item.productId ?? null,
           description: item.description,
           quantity: item.quantity,
@@ -108,41 +108,41 @@ export async function POST(request: NextRequest): Promise<Response> {
         })),
       );
 
-      return quotation;
+      return quote;
     });
 
-    const quotationWithRelations = await getQuotationWithRelations({ id: createdQuotation.id });
-    if (!quotationWithRelations) {
-      throw new Error('Failed to load created quotation');
+    const quoteWithRelations = await getQuoteWithRelations({ id: createdQuote.id });
+    if (!quoteWithRelations) {
+      throw new Error('Failed to load created quote');
     }
 
-    if (quotationWithRelations.customer.phone) {
-      const totalFormatted = currencyFormatter.format(quotationWithRelations.total);
-      const validUntilFormatted = quotationWithRelations.validUntil
-        ? new Date(quotationWithRelations.validUntil).toLocaleDateString('en-MY')
+    if (quoteWithRelations.customer.phone) {
+      const totalFormatted = currencyFormatter.format(quoteWithRelations.total);
+      const validUntilFormatted = quoteWithRelations.validUntil
+        ? new Date(quoteWithRelations.validUntil).toLocaleDateString('en-MY')
         : '';
-      const message = `Halo ${quotationWithRelations.customer.name}! Quotation ${quotationWithRelations.number} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
+      const message = `Halo ${quoteWithRelations.customer.name}! Quotation ${quoteWithRelations.number} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
 
       try {
         await sendWhatsAppTextMessage(
           {
-            to: ensureWhatsAppJid(quotationWithRelations.customer.phone),
+            to: ensureWhatsAppJid(quoteWithRelations.customer.phone),
             message,
             metadata: {
-              documentId: quotationWithRelations.id,
+              documentId: quoteWithRelations.id,
               documentType: 'quotation',
             },
           },
           { attempts: 3 },
         );
       } catch (error) {
-        logger.warn({ err: error }, 'Failed to send quotation WhatsApp notification');
+        logger.warn({ err: error }, 'Failed to send quote WhatsApp notification');
       }
     }
 
-    return Response.json(quotationWithRelations, { status: 201 });
+    return Response.json(quoteWithRelations, { status: 201 });
   } catch (error) {
-    logger.error({ err: error }, 'Failed to create quotation');
+    logger.error({ err: error }, 'Failed to create quote');
     const message = error instanceof Error ? error.message : 'Unexpected error';
     return Response.json({ error: message }, { status: 500 });
   }

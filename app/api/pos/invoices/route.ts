@@ -22,17 +22,17 @@ const invoiceItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
-const invoiceStatusSchema = z.enum(['draft', 'sent', 'due', 'overdue', 'paid', 'void']);
+const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled']);
 
 const invoiceSchema = z.object({
   customerId: z.string().uuid(),
-  quotationId: z.string().uuid().optional().nullable(),
+  quoteId: z.string().uuid().optional().nullable(),
   number: z.string().optional(),
   issuedAt: z.string().optional(),
   dueAt: z.string().optional(),
   status: invoiceStatusSchema.default('draft'),
   taxRate: z.number().default(0),
-  paidTotal: z.number().nonnegative().optional(),
+  paidAmount: z.number().nonnegative().optional(),
   notes: z.string().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one line item is required'),
 });
@@ -76,8 +76,8 @@ export async function POST(request: NextRequest): Promise<Response> {
   const invoiceNumber = data.number ?? formatDocumentNumber('INV');
   const issuedAt = data.issuedAt ? new Date(data.issuedAt) : new Date();
   const dueAt = data.dueAt ? new Date(data.dueAt) : null;
-  const paidTotal = Math.max(0, data.paidTotal ?? 0);
-  const balanceValue = Math.max(0, total - paidTotal);
+  const paidAmount = Math.max(0, data.paidAmount ?? 0);
+  const balanceValue = Math.max(0, total - paidAmount);
 
   try {
     const createdInvoice = await db.transaction(async (tx) => {
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         .values({
           number: invoiceNumber,
           customerId: data.customerId,
-          quotationId: data.quotationId ?? null,
+          quoteId: data.quoteId ?? null,
           issuedAt,
           dueAt,
           status: data.status,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           taxRate: toPgNumeric(data.taxRate),
           taxAmount: toPgNumeric(taxAmount),
           total: toPgNumeric(total),
-          paidTotal: toPgNumeric(paidTotal),
+          paidAmount: toPgNumeric(paidAmount),
           balance: toPgNumeric(balanceValue),
           notes: data.notes,
         })

@@ -1,14 +1,14 @@
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import { customers, invoiceItems, invoices, quotationItems, quotations } from '@/db/schema';
+import { customers, invoiceItems, invoices, quoteItems, quotes } from '@/db/schema';
 import type {
   InvoiceWithRelations,
   NormalizedInvoice,
   NormalizedInvoiceItem,
-  NormalizedQuotation,
-  NormalizedQuotationItem,
-  QuotationWithRelations,
+  NormalizedQuote,
+  NormalizedQuoteItem,
+  QuoteWithRelations,
 } from '@/types/pos';
 
 function toNumber(value: unknown): number {
@@ -68,9 +68,7 @@ export async function getInvoiceWithRelations(
     .from(invoiceItems)
     .where(eq(invoiceItems.invoiceId, invoice.id));
 
-  const quotation = invoice.quotationId
-    ? await getQuotationWithRelations({ id: invoice.quotationId })
-    : null;
+  const quote = invoice.quoteId ? await getQuoteWithRelations({ id: invoice.quoteId }) : null;
 
   const normalizedInvoice: NormalizedInvoice = {
     ...invoice,
@@ -78,7 +76,7 @@ export async function getInvoiceWithRelations(
     taxRate: toNumber(invoice.taxRate),
     taxAmount: toNumber(invoice.taxAmount),
     total: toNumber(invoice.total),
-    paidTotal: toNumber(invoice.paidTotal),
+    paidAmount: toNumber(invoice.paidAmount),
     balance: toNullableNumber(invoice.balance),
   };
 
@@ -92,49 +90,49 @@ export async function getInvoiceWithRelations(
   return {
     ...normalizedInvoice,
     customer,
-    quotation: quotation ? quotation : null,
+    quote: quote ? quote : null,
     items: normalizedItems,
   };
 }
 
-export async function getQuotationWithRelations(
+export async function getQuoteWithRelations(
   identifier: { id?: string | null; number?: string | null },
-): Promise<QuotationWithRelations | null> {
+): Promise<QuoteWithRelations | null> {
   const { id, number } = identifier;
   if (!id && !number) {
-    throw new Error('A quotation id or number is required');
+    throw new Error('A quote id or number is required');
   }
 
-  const where = id ? eq(quotations.id, id) : eq(quotations.number, number!);
-  const [quotation] = await db.select().from(quotations).where(where).limit(1);
-  if (!quotation) {
+  const where = id ? eq(quotes.id, id) : eq(quotes.number, number!);
+  const [quote] = await db.select().from(quotes).where(where).limit(1);
+  if (!quote) {
     return null;
   }
 
   const [customer] = await db
     .select()
     .from(customers)
-    .where(eq(customers.id, quotation.customerId))
+    .where(eq(customers.id, quote.customerId))
     .limit(1);
 
   if (!customer) {
-    throw new Error('Quotation is missing linked customer');
+    throw new Error('Quote is missing linked customer');
   }
 
   const items = await db
     .select()
-    .from(quotationItems)
-    .where(eq(quotationItems.quotationId, quotation.id));
+    .from(quoteItems)
+    .where(eq(quoteItems.quoteId, quote.id));
 
-  const normalizedQuotation: NormalizedQuotation = {
-    ...quotation,
-    subtotal: toNumber(quotation.subtotal),
-    taxRate: toNumber(quotation.taxRate),
-    taxAmount: toNumber(quotation.taxAmount),
-    total: toNumber(quotation.total),
+  const normalizedQuote: NormalizedQuote = {
+    ...quote,
+    subtotal: toNumber(quote.subtotal),
+    taxRate: toNumber(quote.taxRate),
+    taxAmount: toNumber(quote.taxAmount),
+    total: toNumber(quote.total),
   };
 
-  const normalizedItems: NormalizedQuotationItem[] = items.map((item) => ({
+  const normalizedItems: NormalizedQuoteItem[] = items.map((item) => ({
     ...item,
     unitPrice: toNumber(item.unitPrice),
     discount: toNumber(item.discount),
@@ -142,7 +140,7 @@ export async function getQuotationWithRelations(
   }));
 
   return {
-    ...normalizedQuotation,
+    ...normalizedQuote,
     customer,
     items: normalizedItems,
   };

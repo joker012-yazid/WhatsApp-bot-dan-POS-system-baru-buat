@@ -10,7 +10,7 @@ import type * as PDFKitNS from 'pdfkit';
 
 import env from '@/env.mjs';
 import logger from '@/lib/logger';
-import type { InvoiceWithRelations, QuotationWithRelations } from '@/types/pos';
+import type { InvoiceWithRelations, QuoteWithRelations } from '@/types/pos';
 
 const currencyFormatter = new Intl.NumberFormat('en-MY', {
   style: 'currency',
@@ -300,7 +300,7 @@ export async function renderInvoicePdf(invoice: InvoiceWithRelations): Promise<G
     { label: 'Subtotal', value: formatCurrency(invoice.subtotal) },
     { label: `Tax (${invoice.taxRate}% )`, value: formatCurrency(invoice.taxAmount) },
     { label: 'Total', value: formatCurrency(invoice.total), emphasize: true },
-    { label: 'Paid', value: formatCurrency(invoice.paidTotal ?? 0) },
+    { label: 'Paid', value: formatCurrency(invoice.paidAmount ?? 0) },
     { label: 'Balance', value: formatCurrency(invoice.balance ?? 0) },
   ];
 
@@ -321,30 +321,30 @@ export async function renderInvoicePdf(invoice: InvoiceWithRelations): Promise<G
   );
 }
 
-export async function renderQuotationPdf(quotation: QuotationWithRelations): Promise<GeneratedPdf> {
-  const subtitle = `${quotation.number} • Valid until ${formatDateValue(quotation.validUntil)}`;
+export async function renderQuotePdf(quote: QuoteWithRelations): Promise<GeneratedPdf> {
+  const subtitle = `${quote.number} • Valid until ${formatDateValue(quote.validUntil)}`;
   const leftDetails = [
-    { label: 'Customer', value: quotation.customer.name },
-    { label: 'Phone', value: quotation.customer.phone ?? '-' },
-    { label: 'Email', value: quotation.customer.email ?? '-' },
+    { label: 'Customer', value: quote.customer.name },
+    { label: 'Phone', value: quote.customer.phone ?? '-' },
+    { label: 'Email', value: quote.customer.email ?? '-' },
   ];
   const rightDetails = [
-    { label: 'Status', value: quotation.status },
-    { label: 'Valid Until', value: formatDateValue(quotation.validUntil) },
+    { label: 'Status', value: quote.status },
+    { label: 'Valid Until', value: formatDateValue(quote.validUntil) },
   ];
 
   const summaryRows = [
-    { label: 'Subtotal', value: formatCurrency(quotation.subtotal) },
-    { label: `Tax (${quotation.taxRate}% )`, value: formatCurrency(quotation.taxAmount) },
-    { label: 'Total', value: formatCurrency(quotation.total), emphasize: true },
+    { label: 'Subtotal', value: formatCurrency(quote.subtotal) },
+    { label: `Tax (${quote.taxRate}% )`, value: formatCurrency(quote.taxAmount) },
+    { label: 'Total', value: formatCurrency(quote.total), emphasize: true },
   ];
 
   const extras: Array<{ title: string; content: string }> = [];
-  if (quotation.notes) {
-    extras.push({ title: 'Notes', content: quotation.notes });
+  if (quote.notes) {
+    extras.push({ title: 'Notes', content: quote.notes });
   }
-  if (quotation.terms) {
-    extras.push({ title: 'Terms', content: quotation.terms });
+  if (quote.terms) {
+    extras.push({ title: 'Terms', content: quote.terms });
   }
 
   return renderPosDocument(
@@ -352,9 +352,9 @@ export async function renderQuotationPdf(quotation: QuotationWithRelations): Pro
     subtitle,
     leftDetails,
     rightDetails,
-    quotation.items,
+    quote.items,
     summaryRows,
     extras,
-    `quotation-${quotation.number}.pdf`,
+    `quotation-${quote.number}.pdf`,
   );
 }
