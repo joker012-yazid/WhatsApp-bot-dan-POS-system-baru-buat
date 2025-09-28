@@ -108,7 +108,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         .values({
           customerId: customerRecord.id,
           ticketNumber,
-          termsAccepted: termsAccepted,
+          termsAccepted,
           deviceBrand: device.brand,
           deviceModel: device.model,
           deviceType: device.type ?? null,
