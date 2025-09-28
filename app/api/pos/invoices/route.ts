@@ -3,15 +3,11 @@ import { z } from 'zod';
 
 import { db } from '@/db';
 import { invoiceItems, invoices } from '@/db/schema';
-import {
-  calculateTotals,
-  formatDocumentNumber,
-  getInvoiceWithRelations,
-  toPgNumeric,
-} from '@/lib/pos';
+import { calculateTotals, getInvoiceWithRelations, toPgNumeric } from '@/lib/pos';
 import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
 import { getTicketById } from '@/lib/tickets';
+import { DOCUMENT_NUMBER_PATTERN, nextNumber, parseDocumentNumber } from '@/lib/next-number';
 
 export const runtime = 'nodejs';
 
@@ -25,11 +21,15 @@ const invoiceItemSchema = z.object({
 
 const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled']);
 
+const documentNumberSchema = z
+  .string()
+  .regex(DOCUMENT_NUMBER_PATTERN, 'Invalid document number format');
+
 const invoiceSchema = z.object({
   customerId: z.string().uuid(),
   quoteId: z.string().uuid().optional().nullable(),
   ticketId: z.string().uuid().optional().nullable(),
-  number: z.string().optional(),
+  number: documentNumberSchema.optional(),
   issuedAt: z.string().optional(),
   dueAt: z.string().optional(),
   status: invoiceStatusSchema.default('draft'),
@@ -75,7 +75,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const data = parsed.data;
   const { subtotal, taxAmount, total } = calculateTotals(data.items, data.taxRate);
-  const invoiceNumber = data.number ?? formatDocumentNumber('INV');
+  const invoiceNumber = data.number ?? (await nextNumber('INV'));
+  const parsedNumber = parseDocumentNumber(invoiceNumber);
+  if (!parsedNumber) {
+    return Response.json({ error: 'Invalid invoice number format' }, { status: 400 });
+  }
   const issuedAt = data.issuedAt ? new Date(data.issuedAt) : new Date();
   const dueAt = data.dueAt ? new Date(data.dueAt) : null;
   const paidAmount = Math.max(0, data.paidAmount ?? 0);
@@ -90,6 +94,8 @@ export async function POST(request: NextRequest): Promise<Response> {
           customerId: data.customerId,
           ticketId: data.ticketId ?? null,
           quoteId: data.quoteId ?? null,
+          numberYear: parsedNumber.year,
+          sequence: parsedNumber.sequence,
           issuedAt,
           dueAt,
           status: data.status,

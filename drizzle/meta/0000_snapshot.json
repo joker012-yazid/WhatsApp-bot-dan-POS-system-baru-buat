@@ -358,6 +358,18 @@
           "primaryKey": false,
           "notNull": false
         },
+        "number_year": {
+          "name": "number_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "subtotal": {
           "name": "subtotal",
           "type": "numeric(12, 2)",
@@ -432,7 +444,16 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "invoices_number_year_sequence_unique": {
+          "name": "invoices_number_year_sequence_unique",
+          "columns": [
+            "number_year",
+            "sequence"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "invoices_customer_id_customers_id_fk": {
           "name": "invoices_customer_id_customers_id_fk",
@@ -708,6 +729,18 @@
           "primaryKey": false,
           "notNull": true
         },
+        "number_year": {
+          "name": "number_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "subtotal": {
           "name": "subtotal",
           "type": "numeric(12, 2)",
@@ -769,7 +802,16 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "quotes_number_year_sequence_unique": {
+          "name": "quotes_number_year_sequence_unique",
+          "columns": [
+            "number_year",
+            "sequence"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "quotes_customer_id_customers_id_fk": {
           "name": "quotes_customer_id_customers_id_fk",

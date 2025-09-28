@@ -3,15 +3,11 @@ import { z } from 'zod';
 
 import { db } from '@/db';
 import { quoteItems, quotes } from '@/db/schema';
-import {
-  calculateTotals,
-  formatDocumentNumber,
-  getQuoteWithRelations,
-  toPgNumeric,
-} from '@/lib/pos';
+import { calculateTotals, getQuoteWithRelations, toPgNumeric } from '@/lib/pos';
 import logger from '@/lib/logger';
 import { ensureWhatsAppJid, sendWhatsAppTextMessage } from '@/lib/wa';
 import { getTicketById } from '@/lib/tickets';
+import { DOCUMENT_NUMBER_PATTERN, nextNumber, parseDocumentNumber } from '@/lib/next-number';
 
 export const runtime = 'nodejs';
 
@@ -25,10 +21,14 @@ const quoteItemSchema = z.object({
 
 const quoteStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']);
 
+const documentNumberSchema = z
+  .string()
+  .regex(DOCUMENT_NUMBER_PATTERN, 'Invalid document number format');
+
 const quoteSchema = z.object({
   customerId: z.string().uuid(),
   ticketId: z.string().uuid().optional().nullable(),
-  number: z.string().optional(),
+  number: documentNumberSchema.optional(),
   validUntil: z.string(),
   status: quoteStatusSchema.default('draft'),
   taxRate: z.number().default(0),
@@ -73,7 +73,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const data = parsed.data;
   const { subtotal, taxAmount, total } = calculateTotals(data.items, data.taxRate);
-  const quoteNumber = data.number ?? formatDocumentNumber('QUO');
+  const quoteNumber = data.number ?? (await nextNumber('QUO'));
+  const parsedNumber = parseDocumentNumber(quoteNumber);
+  if (!parsedNumber) {
+    return Response.json({ error: 'Invalid quote number format' }, { status: 400 });
+  }
   const validUntil = new Date(data.validUntil);
 
   try {
@@ -84,6 +88,8 @@ export async function POST(request: NextRequest): Promise<Response> {
           number: quoteNumber,
           customerId: data.customerId,
           ticketId: data.ticketId ?? null,
+          numberYear: parsedNumber.year,
+          sequence: parsedNumber.sequence,
           validUntil,
           status: data.status,
           subtotal: toPgNumeric(subtotal),

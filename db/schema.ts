@@ -10,6 +10,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
 import { user } from './auth-schema';
@@ -122,25 +123,36 @@ export const diagnostics = pgTable('diagnostics', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
-export const quotes = pgTable('quotes', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  number: varchar('quote_number', { length: 40 }).notNull().unique(),
-  customerId: uuid('customer_id')
-    .notNull()
-    .references(() => customers.id, { onDelete: 'cascade' }),
-  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
-  status: quoteStatus('status').default('draft').notNull(),
-  validUntil: date('valid_until').notNull(),
-  subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
-  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
-  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
-  total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
-  notes: text('notes'),
-  terms: text('terms'),
-  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
-});
+export const quotes = pgTable(
+  'quotes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    number: varchar('quote_number', { length: 40 }).notNull().unique(),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+    status: quoteStatus('status').default('draft').notNull(),
+    validUntil: date('valid_until').notNull(),
+    numberYear: integer('number_year').notNull(),
+    sequence: integer('sequence').notNull(),
+    subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
+    taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
+    taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
+    total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
+    notes: text('notes'),
+    terms: text('terms'),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
+  },
+  (table) => ({
+    quoteNumberYearSequenceUnique: uniqueIndex('quotes_number_year_sequence_unique').on(
+      table.numberYear,
+      table.sequence,
+    ),
+  }),
+);
 
 export const quoteItems = pgTable('quote_items', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -156,29 +168,40 @@ export const quoteItems = pgTable('quote_items', {
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
-export const invoices = pgTable('invoices', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  number: varchar('invoice_number', { length: 40 }).notNull().unique(),
-  customerId: uuid('customer_id')
-    .notNull()
-    .references(() => customers.id, { onDelete: 'cascade' }),
-  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
-  quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'set null' }),
-  status: invoiceStatus('status').default('draft').notNull(),
-  issuedAt: date('invoice_date').defaultNow().notNull(),
-  dueAt: date('due_date'),
-  subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
-  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
-  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
-  total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
-  paidAmount: numeric('paid_amount', { precision: 12, scale: 2 }).default('0').notNull(),
-  balance: numeric('balance', { precision: 12, scale: 2 }),
-  paymentMethod: varchar('payment_method', { length: 20 }),
-  notes: text('notes'),
-  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
-});
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    number: varchar('invoice_number', { length: 40 }).notNull().unique(),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
+    ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+    quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'set null' }),
+    status: invoiceStatus('status').default('draft').notNull(),
+    issuedAt: date('invoice_date').defaultNow().notNull(),
+    dueAt: date('due_date'),
+    numberYear: integer('number_year').notNull(),
+    sequence: integer('sequence').notNull(),
+    subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
+    taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
+    taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
+    total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
+    paidAmount: numeric('paid_amount', { precision: 12, scale: 2 }).default('0').notNull(),
+    balance: numeric('balance', { precision: 12, scale: 2 }),
+    paymentMethod: varchar('payment_method', { length: 20 }),
+    notes: text('notes'),
+    createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
+  },
+  (table) => ({
+    invoiceNumberYearSequenceUnique: uniqueIndex('invoices_number_year_sequence_unique').on(
+      table.numberYear,
+      table.sequence,
+    ),
+  }),
+);
 
 export const invoiceItems = pgTable('invoice_items', {
   id: uuid('id').defaultRandom().primaryKey(),
