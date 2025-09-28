@@ -40,7 +40,7 @@ This starter kit is being built to solve the friction developers face when setti
 
 A new visitor lands on the root URL and sees a welcome page with options to **Sign Up** or **Sign In**. If they choose Sign Up, they fill in their email, password, and hit “Create Account.” The form submits to `/api/auth/route.ts`, which hashes the password, creates a new user session or token, and redirects them to the dashboard. If any input is invalid, an inline error message explains the issue (e.g., “Password too short”).
 
-Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `dashboard/layout.tsx`, and the main panel pulls in static data from `data.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
+Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `app/(dash)/layout.tsx`, and the main panel pulls in static data from `lib/data/dashboard.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
 
 ---
 
@@ -50,9 +50,9 @@ Once authenticated, the user is taken to the `/dashboard` route. Here they see a
 - **Sign-In Page (`/app/sign-in/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
 - **Authentication API (`/app/api/auth/route.ts`)**: Handles both registration and login based on HTTP method, integrates password hashing (bcrypt) and session or JWT logic.
 - **Global Layout (`/app/layout.tsx` + `globals.css`)**: Shared header, footer, and CSS resets across all pages.
-- **Dashboard Layout (`/app/dashboard/layout.tsx` + `dashboard/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
-- **Dashboard Page (`/app/dashboard/page.tsx`)**: Reads `data.json`, renders it as cards or tables.
-- **Static Data Source (`/app/dashboard/data.json`)**: Example dataset to demo dynamic rendering.
+- **Dashboard Layout (`/app/(dash)/layout.tsx` + `app/(dash)/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
+- **Dashboard Page (`/app/(dash)/dashboard/page.tsx`)**: Reads the shared mock data, renders it as cards or tables.
+- **Static Data Source (`/lib/data/dashboard.json`)**: Example dataset to demo dynamic rendering.
 - **TypeScript Configuration**: `tsconfig.json` with strict mode and path aliases (if any).
 
 ---

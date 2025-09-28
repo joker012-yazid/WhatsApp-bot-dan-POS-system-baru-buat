@@ -1,9 +1,11 @@
 import { ChartAreaInteractive } from "@/components/chart-area-interactive"
 import { DataTable } from "@/components/data-table"
 import { SectionCards } from "@/components/section-cards"
-import data from "@/app/dashboard/data.json"
+import { getDashboardSections } from "@/lib/mock-data"
 
-export default function Page() {
+export default async function DashboardPage() {
+  const data = await getDashboardSections()
+
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">

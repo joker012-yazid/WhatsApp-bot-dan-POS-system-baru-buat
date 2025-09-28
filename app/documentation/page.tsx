@@ -125,15 +125,15 @@ export default function DocumentationPage() {
                 resets across all pages.
               </li>
               <li>
-                <strong>Dashboard Layout (<code>/app/dashboard/layout.tsx</code> + <code>dashboard/theme.css</code>)</strong>: Sidebar or
+                <strong>Dashboard Layout (<code>/app/(dash)/layout.tsx</code> + <code>app/(dash)/theme.css</code>)</strong>: Sidebar or
                 top nav for authenticated flows, section-specific styling.
               </li>
               <li>
-                <strong>Dashboard Page (<code>/app/dashboard/page.tsx</code>)</strong>: Reads <code>data.json</code>, renders it as cards or
+                <strong>Dashboard Page (<code>/app/(dash)/dashboard/page.tsx</code>)</strong>: Reads shared mock data, renders it as cards or
                 tables.
               </li>
               <li>
-                <strong>Static Data Source (<code>/app/dashboard/data.json</code>)</strong>: Example dataset to demo dynamic rendering.
+                <strong>Static Data Source (<code>/lib/data/dashboard.json</code>)</strong>: Example dataset to demo dynamic rendering.
               </li>
               <li>
                 <strong>TypeScript Configuration</strong>: <code>tsconfig.json</code> with strict mode and path aliases (if any).

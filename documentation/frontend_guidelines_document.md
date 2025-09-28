@@ -14,7 +14,7 @@ This document explains, in simple terms, how the frontend of the `codeguide-star
 **How It’s Organized**
 - The `app/` folder holds all pages and layouts. Each URL path corresponds to a folder:
   - `/app/sign-in` and `/app/sign-up` for authentication pages.
-  - `/app/dashboard` for the protected user area.
+  - `/app/(dash)` route group for the protected user area (e.g., `/dashboard`, `/customers`, `/products`).
   - API routes live under `/app/api/auth/route.ts`.
 - Each route folder contains:
   - `page.tsx` (the UI for that page)
@@ -47,7 +47,7 @@ This document explains, in simple terms, how the frontend of the `codeguide-star
 
 **Approach**
 - **Global Styles (`globals.css`)**: Resets, base typography, and common utility classes.
-- **Section Styles (`theme.css` in dashboard)**: Styles specific to the dashboard area (colors, layouts).
+- **Section Styles (`theme.css` in the `app/(dash)` route group)**: Styles specific to the dashboard area (colors, layouts).
 - We follow a **BEM-inspired naming** for classes when writing new CSS to avoid conflicts and keep selectors clear.
 
 **Visual Style**: Modern flat design with subtle shadows for depth. Clear spacing and large touch targets on mobile.
@@ -84,7 +84,7 @@ This document explains, in simple terms, how the frontend of the `codeguide-star
 - `/app` (top-level folder)
   - `layout.tsx`: Global wrapper (nav, footer).
   - `page.tsx`: Landing or redirect logic.
-  - `/sign-in`, `/sign-up`, `/dashboard`, `/api/auth`
+  - `/sign-in`, `/sign-up`, the `/(dash)` routes like `/dashboard`, and `/api/auth`
     - Each has its own `layout.tsx` and `page.tsx`.
 - **Common Components**: Put reusable UI pieces (buttons, inputs, cards) into a `/components` folder at the project root.
 
@@ -122,11 +122,11 @@ This document explains, in simple terms, how the frontend of the `codeguide-star
 - Layouts (`layout.tsx`) and pages (`page.tsx`) are colocated for that route.
 
 **Protected Pages**
-- The dashboard’s `layout.tsx` checks for a valid session (via cookie or context). If missing, it issues a server-side redirect to `/sign-in`.
+- The dashboard route group’s `layout.tsx` (`/app/(dash)/layout.tsx`) checks for a valid session (via cookie or context). If missing, it issues a server-side redirect to `/sign-in`.
 
 **Navigation Structure**
 - **Header**: Present in global layout with the app logo and conditional Sign In/Sign Out links.
-- **Sidebar**: Included in `dashboard/layout.tsx` with links to dashboard sections (expandable in future).
+- **Sidebar**: Included in `app/(dash)/layout.tsx` with links to dashboard sections (expandable in future).
 
 ---
 
