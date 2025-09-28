@@ -45,7 +45,7 @@ export async function POST(
   const data = parsed.data
   const now = new Date()
   const nextStatus =
-    data.approved === undefined ? 'diagnosing' : data.approved ? 'approved' : 'cancelled'
+    data.approved === undefined ? 'awaiting_approval' : data.approved ? 'approved' : 'rejected'
 
   try {
     const diagnosticRecord = await db.transaction(async (tx) => {
@@ -71,7 +71,6 @@ export async function POST(
 
       const updateValues: Partial<TicketInsert> = {
         status: nextStatus,
-        technicianNotes: data.recommendedActions ?? data.summary,
         updatedAt: now,
       }
 
@@ -115,7 +114,7 @@ export async function POST(
     if (data.approved !== undefined) {
       const approvalMessage = data.approved
         ? `Kerja pembaikan untuk tiket #${ticket.ticketNumber} telah diluluskan. Kami akan mulakan servis sebaik sahaja bahagian disediakan.`
-        : `Pembaikan untuk tiket #${ticket.ticketNumber} ditangguhkan seperti permintaan anda. Beritahu kami jika mahu meneruskan kemudian.`
+        : `Pembaikan untuk tiket #${ticket.ticketNumber} ditolak mengikut permintaan anda. Hubungi kami jika mahu membuat perubahan.`
 
       await sendTicketWorkflowWhatsAppMessage({
         customerId: ticket.customer.id,

@@ -1,8 +1,8 @@
-CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."quote_status" AS ENUM('draft', 'sent', 'accepted', 'rejected', 'expired', 'converted');--> statement-breakpoint
-CREATE TYPE "public"."reminder_kind" AS ENUM('payment_due', 'payment_overdue', 'service_ready', 'custom');--> statement-breakpoint
-CREATE TYPE "public"."ticket_status" AS ENUM('pending', 'diagnosing', 'approved', 'in_progress', 'completed', 'ready_for_pickup', 'picked_up', 'cancelled');--> statement-breakpoint
-CREATE TYPE "public"."wa_direction" AS ENUM('inbound', 'outbound');--> statement-breakpoint
+CREATE TYPE "public"."invoice_status" AS ENUM('draft', 'sent', 'paid', 'void');--> statement-breakpoint
+CREATE TYPE "public"."quote_status" AS ENUM('draft', 'sent', 'approved', 'rejected');--> statement-breakpoint
+CREATE TYPE "public"."reminder_kind" AS ENUM('day1', 'day20', 'day30');--> statement-breakpoint
+CREATE TYPE "public"."ticket_status" AS ENUM('intake', 'diagnosed', 'awaiting_approval', 'approved', 'rejected', 'repairing', 'done', 'picked_up');--> statement-breakpoint
+CREATE TYPE "public"."wa_direction" AS ENUM('in', 'out');--> statement-breakpoint
 CREATE TYPE "public"."wa_message_status" AS ENUM('pending', 'sent', 'delivered', 'read', 'failed', 'received', 'deleted');--> statement-breakpoint
 CREATE TABLE "customers" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -52,6 +52,8 @@ CREATE TABLE "invoices" (
 	"status" "invoice_status" DEFAULT 'draft' NOT NULL,
 	"invoice_date" date DEFAULT now() NOT NULL,
 	"due_date" date,
+	"number_year" integer NOT NULL,
+	"sequence" integer NOT NULL,
 	"subtotal" numeric(12, 2) DEFAULT '0' NOT NULL,
 	"tax_rate" numeric(5, 2) DEFAULT '6.00' NOT NULL,
 	"tax_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
@@ -96,6 +98,8 @@ CREATE TABLE "quotes" (
 	"ticket_id" uuid,
 	"status" "quote_status" DEFAULT 'draft' NOT NULL,
 	"valid_until" date NOT NULL,
+	"number_year" integer NOT NULL,
+	"sequence" integer NOT NULL,
 	"subtotal" numeric(12, 2) DEFAULT '0' NOT NULL,
 	"tax_rate" numeric(5, 2) DEFAULT '6.00' NOT NULL,
 	"tax_amount" numeric(12, 2) DEFAULT '0' NOT NULL,
@@ -133,16 +137,19 @@ CREATE TABLE "tickets" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"ticket_number" varchar(20) NOT NULL,
 	"customer_id" uuid NOT NULL,
-	"device_type" varchar(50) NOT NULL,
-	"device_model" varchar(100) NOT NULL,
-	"serial_number" varchar(50),
+	"terms_accepted" boolean DEFAULT false NOT NULL,
+	"device_brand" varchar(100),
+	"device_model" varchar(120),
+	"device_type" varchar(80),
+	"device_color" varchar(60),
+	"serial_number" varchar(60),
+	"device_accessories" text,
+	"security_code" varchar(120),
 	"problem_description" text NOT NULL,
-	"status" "ticket_status" DEFAULT 'pending' NOT NULL,
-	"priority" varchar(20) DEFAULT 'normal' NOT NULL,
+	"status" "ticket_status" DEFAULT 'intake' NOT NULL,
 	"estimated_cost" numeric(10, 2),
 	"actual_cost" numeric(10, 2),
 	"estimated_completion_date" date,
-	"technician_notes" text,
 	"assigned_to" text,
 	"created_by" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -189,4 +196,6 @@ ALTER TABLE "tickets" ADD CONSTRAINT "tickets_customer_id_customers_id_fk" FOREI
 ALTER TABLE "tickets" ADD CONSTRAINT "tickets_assigned_to_user_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tickets" ADD CONSTRAINT "tickets_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "wa_messages" ADD CONSTRAINT "wa_messages_customer_id_customers_id_fk" FOREIGN KEY ("customer_id") REFERENCES "public"."customers"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "wa_messages" ADD CONSTRAINT "wa_messages_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "wa_messages" ADD CONSTRAINT "wa_messages_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "invoices_number_year_sequence_unique" ON "invoices" USING btree ("number_year","sequence");--> statement-breakpoint
+CREATE UNIQUE INDEX "quotes_number_year_sequence_unique" ON "quotes" USING btree ("number_year","sequence");

@@ -111,7 +111,7 @@ async function runTicketApprovalReminderJob(): Promise<void> {
           .where(
             and(
               inArray(reminderLog.ticketId, ticketIds),
-              eq(reminderLog.kind, 'custom'),
+              inArray(reminderLog.kind, ['day1', 'day20', 'day30']),
               sql`(reminder_log.metadata ->> 'context') = ${REMINDER_CONTEXT}`,
             ),
           )
@@ -172,7 +172,7 @@ async function runTicketApprovalReminderJob(): Promise<void> {
             sessionId,
             customerId: ticket.customerId,
             ticketId: ticket.ticketId,
-            direction: 'outbound',
+            direction: 'out',
             status: 'pending',
             body: message,
             metadata,
@@ -182,7 +182,7 @@ async function runTicketApprovalReminderJob(): Promise<void> {
         await db.insert(reminderLog).values({
           ticketId: ticket.ticketId,
           waMessageId: queuedMessage?.id,
-          kind: 'custom',
+          kind: bucket.days === 1 ? 'day1' : bucket.days === 20 ? 'day20' : 'day30',
           sentAt: now,
           metadata,
         })

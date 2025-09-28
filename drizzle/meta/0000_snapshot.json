@@ -1,5 +1,5 @@
 {
-  "id": "e1fdb099-bfd7-47ed-8e27-c66c66701062",
+  "id": "a7792513-1a58-4d6f-bec1-3a542e541ffc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -448,10 +448,23 @@
         "invoices_number_year_sequence_unique": {
           "name": "invoices_number_year_sequence_unique",
           "columns": [
-            "number_year",
-            "sequence"
+            {
+              "expression": "number_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": true
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -806,10 +819,23 @@
         "quotes_number_year_sequence_unique": {
           "name": "quotes_number_year_sequence_unique",
           "columns": [
-            "number_year",
-            "sequence"
+            {
+              "expression": "number_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "isUnique": true
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1079,21 +1105,52 @@
           "primaryKey": false,
           "notNull": true
         },
-        "device_type": {
-          "name": "device_type",
-          "type": "varchar(50)",
+        "terms_accepted": {
+          "name": "terms_accepted",
+          "type": "boolean",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": false
+        },
+        "device_brand": {
+          "name": "device_brand",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
         },
         "device_model": {
           "name": "device_model",
-          "type": "varchar(100)",
+          "type": "varchar(120)",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "device_type": {
+          "name": "device_type",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "device_color": {
+          "name": "device_color",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
         },
         "serial_number": {
           "name": "serial_number",
-          "type": "varchar(50)",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "device_accessories": {
+          "name": "device_accessories",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "security_code": {
+          "name": "security_code",
+          "type": "varchar(120)",
           "primaryKey": false,
           "notNull": false
         },
@@ -1109,14 +1166,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'pending'"
-        },
-        "priority": {
-          "name": "priority",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'normal'"
+          "default": "'intake'"
         },
         "estimated_cost": {
           "name": "estimated_cost",
@@ -1133,12 +1183,6 @@
         "estimated_completion_date": {
           "name": "estimated_completion_date",
           "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "technician_notes": {
-          "name": "technician_notes",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -1358,9 +1402,7 @@
         "draft",
         "sent",
         "paid",
-        "partial",
-        "overdue",
-        "cancelled"
+        "void"
       ]
     },
     "public.quote_status": {
@@ -1369,42 +1411,39 @@
       "values": [
         "draft",
         "sent",
-        "accepted",
-        "rejected",
-        "expired",
-        "converted"
+        "approved",
+        "rejected"
       ]
     },
     "public.reminder_kind": {
       "name": "reminder_kind",
       "schema": "public",
       "values": [
-        "payment_due",
-        "payment_overdue",
-        "service_ready",
-        "custom"
+        "day1",
+        "day20",
+        "day30"
       ]
     },
     "public.ticket_status": {
       "name": "ticket_status",
       "schema": "public",
       "values": [
-        "pending",
-        "diagnosing",
+        "intake",
+        "diagnosed",
+        "awaiting_approval",
         "approved",
-        "in_progress",
-        "completed",
-        "ready_for_pickup",
-        "picked_up",
-        "cancelled"
+        "rejected",
+        "repairing",
+        "done",
+        "picked_up"
       ]
     },
     "public.wa_direction": {
       "name": "wa_direction",
       "schema": "public",
       "values": [
-        "inbound",
-        "outbound"
+        "in",
+        "out"
       ]
     },
     "public.wa_message_status": {

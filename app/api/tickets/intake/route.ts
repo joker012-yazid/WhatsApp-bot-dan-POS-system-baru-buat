@@ -11,26 +11,41 @@ import { toPgNumeric } from '@/lib/pos'
 
 export const runtime = 'nodejs'
 
+const optionalField = z
+  .string()
+  .optional()
+  .transform((value) => {
+    if (typeof value !== 'string') {
+      return undefined
+    }
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  })
+
 const customerSchema = z.object({
-  name: z.string().min(2, 'Nama pelanggan diperlukan'),
-  phone: z.string().min(6, 'Nombor telefon diperlukan'),
-  email: z.string().email().optional().or(z.literal('').transform(() => undefined)),
-  company: z.string().optional().or(z.literal('').transform(() => undefined)),
-  notes: z.string().optional(),
+  name: z.string().min(2, 'Nama pelanggan diperlukan').transform((value) => value.trim()),
+  phone: z.string().min(6, 'Nombor telefon diperlukan').transform((value) => value.trim()),
+  email: optionalField,
+  company: optionalField,
+  notes: optionalField,
 })
 
 const deviceSchema = z.object({
-  type: z.string().min(1, 'Jenis peranti diperlukan'),
-  model: z.string().min(1, 'Model peranti diperlukan'),
-  serialNumber: z.string().optional().or(z.literal('').transform(() => undefined)),
+  brand: z.string().min(1, 'Jenama peranti diperlukan').transform((value) => value.trim()),
+  model: z.string().min(1, 'Model peranti diperlukan').transform((value) => value.trim()),
+  type: optionalField,
+  serialNumber: optionalField,
+  color: optionalField,
+  securityCode: optionalField,
+  accessories: optionalField,
 })
 
 const intakeSchema = z.object({
   customer: customerSchema,
   device: deviceSchema,
   problemDescription: z.string().min(10, 'Terangkan isu peranti'),
-  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
   estimatedCost: z.number().nonnegative().optional(),
+  termsAccepted: z.boolean().refine((value) => value === true, 'Terma servis perlu dipersetujui'),
 })
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -41,7 +56,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { customer: customerInput, device, problemDescription, priority, estimatedCost } = parsed.data
+  const { customer: customerInput, device, problemDescription, estimatedCost, termsAccepted } = parsed.data
 
   try {
     const ticket = await db.transaction(async (tx) => {
@@ -93,13 +108,17 @@ export async function POST(request: NextRequest): Promise<Response> {
         .values({
           customerId: customerRecord.id,
           ticketNumber,
-          deviceType: device.type,
+          termsAccepted: termsAccepted,
+          deviceBrand: device.brand,
           deviceModel: device.model,
+          deviceType: device.type ?? null,
           serialNumber: device.serialNumber ?? null,
+          deviceColor: device.color ?? null,
+          securityCode: device.securityCode ?? null,
+          accessories: device.accessories ?? null,
           problemDescription,
-          priority,
           estimatedCost: estimatedCost !== undefined ? toPgNumeric(estimatedCost) : null,
-          status: 'pending',
+          status: 'intake',
         })
         .returning()
 
@@ -120,7 +139,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       stage: 'intake_ack',
       text: `Terima kasih ${ticket.customer.name}! Tiket servis #${ticket.ticketNumber} telah diterima. Kami akan jalankan diagnosis dan hubungi anda untuk langkah seterusnya.`,
       metadata: {
-        priority,
+        intake: true,
       },
     })
 

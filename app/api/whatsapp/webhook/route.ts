@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     const inboundRecord = await insertWaMessage({
       sessionId,
       customerId,
-      direction: 'inbound',
+      direction: 'in',
       status: 'received',
       body: text,
       sentAt: new Date(),
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       await insertWaMessage({
         sessionId,
         customerId,
-        direction: 'outbound',
+        direction: 'out',
         status: 'sent',
         body: transition.reply,
         sentAt: new Date(),
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       await insertWaMessage({
         sessionId,
         customerId,
-        direction: 'outbound',
+        direction: 'out',
         status: 'failed',
         body: transition.reply,
         sentAt: new Date(),
