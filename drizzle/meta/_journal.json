@@ -5,16 +5,9 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1759043692214,
-      "tag": "0000_thick_killmonger",
+      "when": 1759049562413,
+      "tag": "0000_smooth_romulus",
       "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1759043692215,
-      "tag": "0001_document_sequences",
-      "breakpoints": false
     }
   ]
 }

@@ -27,7 +27,7 @@ export const envSchema = z.object({
     .default('false')
     .transform((value) => value === 'true'),
   TICKET_APPROVAL_REMINDER_CRON: z.string().default('0 9 * * *'),
-  TICKET_AWAITING_APPROVAL_STATUS: z.string().default('pending'),
+  TICKET_AWAITING_APPROVAL_STATUS: z.string().default('awaiting_approval'),
 });
 
 const env = envSchema.parse(process.env);

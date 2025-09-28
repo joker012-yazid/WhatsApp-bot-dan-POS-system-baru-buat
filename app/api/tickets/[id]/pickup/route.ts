@@ -14,10 +14,10 @@ type TicketInsert = typeof tickets.$inferInsert
 type InvoiceSelect = typeof invoices.$inferSelect
 
 const pickupSchema = z.object({
-  status: z.enum(['ready_for_pickup', 'picked_up']).default('ready_for_pickup'),
+  status: z.enum(['done', 'picked_up']).default('done'),
   message: z.string().optional(),
   invoiceId: z.string().uuid().optional(),
-  paymentStatus: z.enum(['sent', 'paid', 'partial', 'overdue', 'draft', 'cancelled']).optional(),
+  paymentStatus: z.enum(['draft', 'sent', 'paid', 'void']).optional(),
   notify: z.boolean().default(true),
 })
 
@@ -86,7 +86,8 @@ export async function POST(
     })
 
     if (data.notify) {
-      const defaultReadyMessage = `Peranti ${ticket.deviceModel} anda kini sedia untuk diambil di kedai kami. Sila tunjukkan tiket #${ticket.ticketNumber} semasa pengambilan.`
+      const deviceLabel = [ticket.deviceBrand, ticket.deviceModel].filter(Boolean).join(' ')
+      const defaultReadyMessage = `Peranti ${deviceLabel || 'anda'} kini sedia untuk diambil di kedai kami. Sila tunjukkan tiket #${ticket.ticketNumber} semasa pengambilan.`
       const defaultPickupMessage = `Terima kasih ${ticket.customer.name}! Pembaikan untuk tiket #${ticket.ticketNumber} selesai dan telah diambil. Jumpa lagi.`
       const baseMessage = data.message ?? (data.status === 'picked_up' ? defaultPickupMessage : defaultReadyMessage)
 

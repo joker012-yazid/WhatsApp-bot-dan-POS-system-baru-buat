@@ -9,21 +9,36 @@ import { z } from "zod"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+
+const optionalString = z
+  .string()
+  .optional()
+  .transform((value) => {
+    if (typeof value !== "string") {
+      return undefined
+    }
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : undefined
+  })
 
 const intakeFormSchema = z.object({
   customerName: z.string().min(2, "Nama pelanggan diperlukan"),
   customerPhone: z.string().min(6, "Nombor telefon diperlukan"),
   customerEmail: z.string().email("Email tidak sah").optional().or(z.literal("").transform(() => undefined)),
   customerCompany: z.string().optional(),
-  deviceType: z.string().min(2, "Jenis peranti diperlukan"),
+  deviceBrand: z.string().min(2, "Jenama peranti diperlukan"),
   deviceModel: z.string().min(2, "Model peranti diperlukan"),
-  serialNumber: z.string().optional(),
-  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+  deviceType: optionalString,
+  serialNumber: optionalString,
+  deviceColor: optionalString,
+  securityCode: optionalString,
+  accessories: optionalString,
   problemDescription: z.string().min(10, "Sila terangkan masalah peranti"),
+  termsAccepted: z.boolean().refine((value) => value, "Anda perlu bersetuju dengan terma servis"),
 })
 
 type IntakeFormValues = z.infer<typeof intakeFormSchema>
@@ -39,13 +54,6 @@ type ApiResponse = {
   error?: unknown
 }
 
-const priorities = [
-  { value: "low", label: "Rendah" },
-  { value: "normal", label: "Normal" },
-  { value: "high", label: "Tinggi" },
-  { value: "urgent", label: "Segera" },
-]
-
 export default function IntakePage() {
   const router = useRouter()
   const [submissionError, setSubmissionError] = useState<string | null>(null)
@@ -58,11 +66,15 @@ export default function IntakePage() {
       customerPhone: "",
       customerEmail: "",
       customerCompany: "",
-      deviceType: "",
+      deviceBrand: "",
       deviceModel: "",
+      deviceType: "",
       serialNumber: "",
-      priority: "normal",
+      deviceColor: "",
+      securityCode: "",
+      accessories: "",
       problemDescription: "",
+      termsAccepted: false,
     },
   })
 
@@ -84,12 +96,16 @@ export default function IntakePage() {
             company: values.customerCompany?.trim() || undefined,
           },
           device: {
-            type: values.deviceType.trim(),
+            brand: values.deviceBrand.trim(),
             model: values.deviceModel.trim(),
+            type: values.deviceType?.trim() || undefined,
             serialNumber: values.serialNumber?.trim() || undefined,
+            color: values.deviceColor?.trim() || undefined,
+            securityCode: values.securityCode?.trim() || undefined,
+            accessories: values.accessories?.trim() || undefined,
           },
-          priority: values.priority,
           problemDescription: values.problemDescription.trim(),
+          termsAccepted: values.termsAccepted,
         }),
       })
 
@@ -105,7 +121,11 @@ export default function IntakePage() {
       }
 
       form.reset()
-      router.push(`/intake/success?ticketNumber=${encodeURIComponent(payload.ticket.ticketNumber)}&name=${encodeURIComponent(payload.ticket.customer.name)}`)
+      router.push(
+        `/intake/success?ticketNumber=${encodeURIComponent(payload.ticket.ticketNumber)}&name=${encodeURIComponent(
+          payload.ticket.customer.name,
+        )}`,
+      )
     } catch (error) {
       console.error(error)
       setSubmissionError("Ralat rangkaian. Sila cuba lagi.")
@@ -193,12 +213,12 @@ export default function IntakePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="deviceType"
+                  name="deviceBrand"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Jenis peranti</FormLabel>
+                      <FormLabel>Jenama peranti</FormLabel>
                       <FormControl>
-                        <Input placeholder="Contoh: Telefon, Laptop" {...field} disabled={isSubmitting} />
+                        <Input placeholder="Contoh: Apple, Samsung" {...field} disabled={isSubmitting} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -221,6 +241,20 @@ export default function IntakePage() {
 
                 <FormField
                   control={form.control}
+                  name="deviceType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Jenis peranti (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: Telefon, Laptop" {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="serialNumber"
                   render={({ field }) => (
                     <FormItem>
@@ -232,27 +266,46 @@ export default function IntakePage() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="deviceColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Warna peranti (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: Hitam" {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
-                  name="priority"
+                  name="securityCode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Keutamaan</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isSubmitting}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Pilih keutamaan" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {priorities.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Kata laluan / PIN (optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Contoh: 1234" {...field} disabled={isSubmitting} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="accessories"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Aksesori disertakan (optional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Contoh: Pengecas, kabel USB" rows={3} {...field} disabled={isSubmitting} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -274,6 +327,25 @@ export default function IntakePage() {
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="termsAccepted"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-base">Saya bersetuju dengan terma servis</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Dengan menghantar borang ini, saya mengesahkan maklumat adalah tepat dan bersetuju dengan terma SOP
+                        pembaikan.
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

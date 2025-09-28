@@ -24,6 +24,7 @@ type ActionKey =
   | "begin-diagnosis"
   | "send-diagnosis"
   | "approve-repair"
+  | "start-repair"
   | "send-update"
   | "ready-pickup"
   | "picked-up"
@@ -101,7 +102,7 @@ export function TicketActions(props: TicketActionsProps) {
               body: JSON.stringify({
                 updateType: "status_change",
                 description: `Teknisi sedang memulakan diagnosis untuk tiket #${props.ticketNumber}.`,
-                status: "diagnosing",
+                status: "diagnosed",
               }),
             })
           }
@@ -131,7 +132,7 @@ export function TicketActions(props: TicketActionsProps) {
             runAction("approve-repair", {
               endpoint: `/api/tickets/${props.ticketId}/diagnose`,
               body: JSON.stringify({
-                summary: `Pembaikan untuk tiket #${props.ticketNumber} diluluskan.`,
+                summary: `Pelanggan meluluskan pembaikan untuk tiket #${props.ticketNumber}.`,
                 recommendedActions: derivedActions,
                 estimatedCost: derivedEstimate,
                 approved: true,
@@ -140,7 +141,24 @@ export function TicketActions(props: TicketActionsProps) {
             })
           }
         >
-          {pendingAction === "approve-repair" ? "Menghantar..." : "Luluskan pembaikan"}
+          {pendingAction === "approve-repair" ? "Menghantar..." : "Tanda pelanggan lulus"}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={pendingAction !== null}
+          onClick={() =>
+            runAction("start-repair", {
+              endpoint: `/api/tickets/${props.ticketId}/updates`,
+              body: JSON.stringify({
+                updateType: "progress",
+                description: `Tiket #${props.ticketNumber} kini dalam proses pembaikan aktif.`,
+                status: "repairing",
+                notify: true,
+              }),
+            })
+          }
+        >
+          {pendingAction === "start-repair" ? "Menghantar..." : "Mulakan pembaikan"}
         </Button>
         <Button
           variant="outline"
@@ -165,12 +183,12 @@ export function TicketActions(props: TicketActionsProps) {
             runAction("ready-pickup", {
               endpoint: `/api/tickets/${props.ticketId}/pickup`,
               body: JSON.stringify({
-                status: "ready_for_pickup",
+                status: "done",
               }),
             })
           }
         >
-          {pendingAction === "ready-pickup" ? "Menghantar..." : "Sedia untuk diambil"}
+          {pendingAction === "ready-pickup" ? "Menghantar..." : "Tandakan siap"}
         </Button>
         <Button
           variant="default"

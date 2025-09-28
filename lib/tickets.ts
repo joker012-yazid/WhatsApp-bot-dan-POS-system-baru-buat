@@ -56,7 +56,7 @@ export async function getTicketById(id: string): Promise<TicketWithRelations | n
   const [quote] = await db
     .select()
     .from(quotes)
-    .where(and(eq(quotes.ticketId, id), eq(quotes.status, 'sent')))
+    .where(and(eq(quotes.ticketId, id), inArray(quotes.status, ['sent', 'approved'])))
     .orderBy(desc(quotes.createdAt))
     .limit(1)
 

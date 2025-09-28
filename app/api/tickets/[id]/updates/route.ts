@@ -16,14 +16,14 @@ type TicketUpdateInsert = typeof ticketUpdates.$inferInsert
 type TicketInsert = typeof tickets.$inferInsert
 
 const statusOptions = [
-  'pending',
-  'diagnosing',
+  'intake',
+  'diagnosed',
+  'awaiting_approval',
   'approved',
-  'in_progress',
-  'completed',
-  'ready_for_pickup',
+  'rejected',
+  'repairing',
+  'done',
   'picked_up',
-  'cancelled',
 ] as const
 
 type TicketStatus = (typeof statusOptions)[number]
@@ -40,20 +40,20 @@ const updateSchema = z.object({
 
 function createStatusLabel(status: TicketStatus | undefined): string {
   switch (status) {
-    case 'diagnosing':
+    case 'diagnosed':
       return 'Diagnosis sedang dijalankan'
+    case 'awaiting_approval':
+      return 'Menunggu kelulusan pelanggan'
     case 'approved':
       return 'Pembaikan diluluskan'
-    case 'in_progress':
+    case 'repairing':
       return 'Pembaikan sedang dilakukan'
-    case 'completed':
-      return 'Pembaikan siap'
-    case 'ready_for_pickup':
+    case 'done':
       return 'Sedia untuk diambil'
     case 'picked_up':
       return 'Telah diambil'
-    case 'cancelled':
-      return 'Tiket dibatalkan'
+    case 'rejected':
+      return 'Tiket ditolak'
     default:
       return 'Dalam giliran servis'
   }

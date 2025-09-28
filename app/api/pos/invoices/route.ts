@@ -19,7 +19,7 @@ const invoiceItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
-const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'partial', 'overdue', 'cancelled']);
+const invoiceStatusSchema = z.enum(['draft', 'sent', 'paid', 'void']);
 
 const documentNumberSchema = z
   .string()

@@ -16,42 +16,23 @@ import {
 import { user } from './auth-schema';
 
 export const ticketStatus = pgEnum('ticket_status', [
-  'pending',
-  'diagnosing',
+  'intake',
+  'diagnosed',
+  'awaiting_approval',
   'approved',
-  'in_progress',
-  'completed',
-  'ready_for_pickup',
-  'picked_up',
-  'cancelled',
-]);
-
-export const quoteStatus = pgEnum('quote_status', [
-  'draft',
-  'sent',
-  'accepted',
   'rejected',
-  'expired',
-  'converted',
+  'repairing',
+  'done',
+  'picked_up',
 ]);
 
-export const invoiceStatus = pgEnum('invoice_status', [
-  'draft',
-  'sent',
-  'paid',
-  'partial',
-  'overdue',
-  'cancelled',
-]);
+export const quoteStatus = pgEnum('quote_status', ['draft', 'sent', 'approved', 'rejected']);
 
-export const waDirection = pgEnum('wa_direction', ['inbound', 'outbound']);
+export const invoiceStatus = pgEnum('invoice_status', ['draft', 'sent', 'paid', 'void']);
 
-export const reminderKind = pgEnum('reminder_kind', [
-  'payment_due',
-  'payment_overdue',
-  'service_ready',
-  'custom',
-]);
+export const waDirection = pgEnum('wa_direction', ['in', 'out']);
+
+export const reminderKind = pgEnum('reminder_kind', ['day1', 'day20', 'day30']);
 
 export const waMessageStatus = pgEnum('wa_message_status', [
   'pending',
@@ -90,16 +71,19 @@ export const tickets = pgTable('tickets', {
   customerId: uuid('customer_id')
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
-  deviceType: varchar('device_type', { length: 50 }).notNull(),
-  deviceModel: varchar('device_model', { length: 100 }).notNull(),
-  serialNumber: varchar('serial_number', { length: 50 }),
+  termsAccepted: boolean('terms_accepted').default(false).notNull(),
+  deviceBrand: varchar('device_brand', { length: 100 }),
+  deviceModel: varchar('device_model', { length: 120 }),
+  deviceType: varchar('device_type', { length: 80 }),
+  deviceColor: varchar('device_color', { length: 60 }),
+  serialNumber: varchar('serial_number', { length: 60 }),
+  accessories: text('device_accessories'),
+  securityCode: varchar('security_code', { length: 120 }),
   problemDescription: text('problem_description').notNull(),
-  status: ticketStatus('status').default('pending').notNull(),
-  priority: varchar('priority', { length: 20 }).default('normal').notNull(),
+  status: ticketStatus('status').default('intake').notNull(),
   estimatedCost: numeric('estimated_cost', { precision: 10, scale: 2 }),
   actualCost: numeric('actual_cost', { precision: 10, scale: 2 }),
   estimatedCompletionDate: date('estimated_completion_date'),
-  technicianNotes: text('technician_notes'),
   assignedTo: text('assigned_to').references(() => user.id, { onDelete: 'set null' }),
   createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),

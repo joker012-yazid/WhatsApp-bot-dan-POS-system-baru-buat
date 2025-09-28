@@ -6,21 +6,17 @@ import { listTickets } from "@/lib/tickets"
 import { TicketActions } from "./_components/ticket-actions"
 
 const statusLabels: Record<string, { label: string; className: string }> = {
-  pending: { label: "Menunggu", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200" },
-  diagnosing: { label: "Diagnosis", className: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200" },
+  intake: { label: "Intake", className: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-200" },
+  diagnosed: { label: "Diagnosa", className: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-200" },
+  awaiting_approval: {
+    label: "Menunggu kelulusan",
+    className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200",
+  },
   approved: { label: "Diluluskan", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-200" },
-  in_progress: { label: "Sedang dibaiki", className: "bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-200" },
-  completed: { label: "Selesai", className: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200" },
-  ready_for_pickup: { label: "Sedia diambil", className: "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-200" },
+  rejected: { label: "Ditolak", className: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200" },
+  repairing: { label: "Dalam pembaikan", className: "bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-200" },
+  done: { label: "Selesai", className: "bg-teal-100 text-teal-700 dark:bg-teal-500/10 dark:text-teal-200" },
   picked_up: { label: "Diambil", className: "bg-lime-100 text-lime-700 dark:bg-lime-500/10 dark:text-lime-200" },
-  cancelled: { label: "Dibatalkan", className: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-200" },
-}
-
-const priorityLabels: Record<string, string> = {
-  low: "Rendah",
-  normal: "Normal",
-  high: "Tinggi",
-  urgent: "Segera",
 }
 
 function formatDate(value: Date | string | null | undefined): string {
@@ -65,10 +61,11 @@ export default async function TicketsPage() {
         ) : null}
 
         {tickets.map((ticket) => {
-          const statusConfig = statusLabels[ticket.status] ?? statusLabels.pending
-          const priorityLabel = priorityLabels[ticket.priority ?? "normal"] ?? ticket.priority
+          const statusConfig = statusLabels[ticket.status] ?? statusLabels.intake
           const latestUpdate = ticket.latestUpdate
           const latestDiagnostic = ticket.latestDiagnostic
+          const deviceLabel = [ticket.deviceBrand, ticket.deviceModel].filter(Boolean).join(" ")
+          const deviceMeta = [ticket.deviceType, ticket.deviceColor].filter(Boolean).join(" · ")
 
           return (
             <Card key={ticket.id} className="shadow-sm">
@@ -76,12 +73,15 @@ export default async function TicketsPage() {
                 <div className="space-y-1">
                   <CardTitle className="text-xl font-semibold">Tiket #{ticket.ticketNumber}</CardTitle>
                   <CardDescription>
-                    {ticket.customer.name} · {ticket.deviceType} {ticket.deviceModel}
+                    {ticket.customer.name}
+                    {deviceLabel ? ` · ${deviceLabel}` : ""}
                   </CardDescription>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
-                  {priorityLabel ? <Badge variant="outline">Keutamaan: {priorityLabel}</Badge> : null}
+                  {!ticket.termsAccepted ? (
+                    <Badge variant="destructive">Terma belum disahkan</Badge>
+                  ) : null}
                   {ticket.estimatedCost ? (
                     <Badge variant="outline">Anggaran: {formatCurrency(ticket.estimatedCost)}</Badge>
                   ) : null}
@@ -99,9 +99,16 @@ export default async function TicketsPage() {
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm font-medium text-muted-foreground">Peranti</p>
-                    <p className="text-sm">{ticket.deviceType} · {ticket.deviceModel}</p>
+                    <p className="text-sm">{deviceLabel || "Tidak ditetapkan"}</p>
+                    {deviceMeta ? <p className="text-sm text-muted-foreground">{deviceMeta}</p> : null}
                     {ticket.serialNumber ? (
                       <p className="text-sm text-muted-foreground">SN: {ticket.serialNumber}</p>
+                    ) : null}
+                    {ticket.securityCode ? (
+                      <p className="text-sm text-muted-foreground">Kata laluan: {ticket.securityCode}</p>
+                    ) : null}
+                    {ticket.accessories ? (
+                      <p className="text-sm text-muted-foreground">Aksesori: {ticket.accessories}</p>
                     ) : null}
                     <p className="text-sm text-muted-foreground">Dicipta: {formatDate(ticket.createdAt)}</p>
                   </div>
@@ -130,9 +137,7 @@ export default async function TicketsPage() {
                           <p className="text-muted-foreground">Cadangan: {latestDiagnostic.recommendedActions}</p>
                         ) : null}
                         {latestDiagnostic.estimatedCost ? (
-                          <p className="text-muted-foreground">
-                            Anggaran: {formatCurrency(latestDiagnostic.estimatedCost)}
-                          </p>
+                          <p className="text-muted-foreground">Anggaran: {formatCurrency(latestDiagnostic.estimatedCost)}</p>
                         ) : null}
                       </div>
                     ) : (

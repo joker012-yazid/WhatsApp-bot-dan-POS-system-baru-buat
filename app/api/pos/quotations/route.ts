@@ -19,7 +19,7 @@ const quoteItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
-const quoteStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted']);
+const quoteStatusSchema = z.enum(['draft', 'sent', 'approved', 'rejected']);
 
 const documentNumberSchema = z
   .string()

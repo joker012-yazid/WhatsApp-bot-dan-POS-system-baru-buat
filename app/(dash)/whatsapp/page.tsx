@@ -49,8 +49,8 @@ export default async function WhatsappPage() {
 
   const ticketsById = new Map(ticketsList.map((ticket) => [ticket.id, ticket]))
 
-  const inboundCount = messageRows.filter((row) => row.message.direction === "inbound").length
-  const outboundCount = messageRows.filter((row) => row.message.direction === "outbound").length
+  const inboundCount = messageRows.filter((row) => row.message.direction === "in").length
+  const outboundCount = messageRows.filter((row) => row.message.direction === "out").length
   const failedCount = messageRows.filter((row) => row.message.status === "failed").length
 
   const threadMap = new Map<string, Thread>()
@@ -147,7 +147,7 @@ export default async function WhatsappPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   {ticket ? <Badge variant="outline">Status tiket: {statusLabel}</Badge> : null}
                   {stageLabel ? <Badge className="bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-200">SOP: {stageLabel}</Badge> : null}
-                  <Badge variant="outline">{thread.lastMessage.direction === "outbound" ? "Keluar" : "Masuk"}</Badge>
+                  <Badge variant="outline">{thread.lastMessage.direction === "out" ? "Keluar" : "Masuk"}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
