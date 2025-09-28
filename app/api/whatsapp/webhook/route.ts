@@ -3,15 +3,13 @@ import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/db';
-import {
-  customers,
-  whatsappMessages,
-  whatsappSessions,
-} from '@/db/schema/app';
+import { customers, waMessages } from '@/db/schema';
 import logger from '@/lib/logger';
 import { ensureWhatsAppJid, parseRemoteJid, sendWhatsAppTextMessage } from '@/lib/wa';
 
 export const runtime = 'nodejs';
+
+type WaMessageStatus = (typeof waMessages.$inferInsert)['status'];
 
 const baseEventSchema = z.object({
   event: z.string(),
@@ -133,51 +131,37 @@ function generateAutoReply(content: string | null): string | null {
   return null;
 }
 
-async function getOrCreateSession(remoteJid: string) {
-  const parsed = parseRemoteJid(remoteJid);
-  const [existing] = await db
-    .select()
-    .from(whatsappSessions)
-    .where(eq(whatsappSessions.sessionId, remoteJid))
+async function findCustomerIdByPhone(phoneNumber: string | null): Promise<string | null> {
+  if (!phoneNumber) {
+    return null;
+  }
+
+  const [customer] = await db
+    .select({ id: customers.id })
+    .from(customers)
+    .where(eq(customers.phone, phoneNumber))
     .limit(1);
 
-  const customerRecord = parsed.phoneNumber
-    ? (await db
-        .select()
-        .from(customers)
-        .where(eq(customers.phone, parsed.phoneNumber))
-        .limit(1))?.[0]
-    : undefined;
+  return customer?.id ?? null;
+}
 
-  if (existing) {
-    await db
-      .update(whatsappSessions)
-      .set({
-        lastActivity: new Date(),
-        phoneNumber: parsed.phoneNumber || existing.phoneNumber,
-        customerId: customerRecord?.id ?? existing.customerId ?? null,
-      })
-      .where(eq(whatsappSessions.id, existing.id));
+function normalizeMessageStatus(status?: string): WaMessageStatus {
+  const allowed: WaMessageStatus[] = [
+    'pending',
+    'sent',
+    'delivered',
+    'read',
+    'failed',
+    'received',
+    'deleted',
+  ];
 
-    return existing;
+  if (!status) {
+    return 'pending';
   }
 
-  const [created] = await db
-    .insert(whatsappSessions)
-    .values({
-      sessionId: remoteJid,
-      phoneNumber: parsed.phoneNumber || remoteJid,
-      isActive: true,
-      lastActivity: new Date(),
-      customerId: customerRecord?.id,
-    })
-    .returning();
-
-  if (!created) {
-    throw new Error('Failed to create WhatsApp session');
-  }
-
-  return created;
+  const normalized = status.toLowerCase() as WaMessageStatus;
+  return allowed.includes(normalized) ? normalized : 'pending';
 }
 
 function toDate(timestamp?: number | string): Date {
@@ -204,17 +188,20 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const { data } = parsed.data;
-    const session = await getOrCreateSession(data.key.remoteJid);
+    const parsedJid = parseRemoteJid(data.key.remoteJid);
+    const customerId = await findCustomerIdByPhone(parsedJid.phoneNumber || null);
     const messageText = extractMessageText(data.message);
     const direction = data.key.fromMe ? 'outbound' : 'inbound';
 
-    await db.insert(whatsappMessages).values({
-      sessionId: session.id,
-      messageId: data.key.id,
+    await db.insert(waMessages).values({
+      sessionId: parsedJid.jid,
+      customerId,
+      externalId: data.key.id,
       direction,
-      messageContent: messageText ?? JSON.stringify(data.message ?? {}),
+      body: messageText ?? JSON.stringify(data.message ?? {}),
       status: direction === 'inbound' ? 'received' : 'sent',
-      timestamp: toDate(data.timestamp),
+      sentAt: toDate(data.timestamp),
+      metadata: data.message ?? null,
     });
 
     if (direction === 'inbound') {
@@ -227,24 +214,26 @@ export async function POST(request: NextRequest): Promise<Response> {
             message: reply,
             metadata: {
               source: 'auto-reply',
-              sessionId: session.id,
+              sessionId: parsedJid.jid,
             },
           });
-          await db.insert(whatsappMessages).values({
-            sessionId: session.id,
-            messageContent: reply,
+          await db.insert(waMessages).values({
+            sessionId: parsedJid.jid,
+            customerId,
+            body: reply,
             direction: 'outbound',
             status: 'sent',
-            timestamp: new Date(),
+            sentAt: new Date(),
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
-          await db.insert(whatsappMessages).values({
-            sessionId: session.id,
-            messageContent: `Auto-reply failed: ${message}`,
+          await db.insert(waMessages).values({
+            sessionId: parsedJid.jid,
+            customerId,
+            body: `Auto-reply failed: ${message}`,
             direction: 'outbound',
             status: 'failed',
-            timestamp: new Date(),
+            sentAt: new Date(),
           });
           logger.error({ err: error }, 'Failed to send auto-reply');
         }
@@ -263,9 +252,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         const status = update.update?.status ?? update.status;
         if (!messageId || !status) continue;
         await db
-          .update(whatsappMessages)
-          .set({ status })
-          .where(eq(whatsappMessages.messageId, messageId));
+          .update(waMessages)
+          .set({ status: normalizeMessageStatus(status) })
+          .where(eq(waMessages.externalId, messageId));
       }
     }
     return Response.json({ acknowledged: true });
@@ -279,9 +268,9 @@ export async function POST(request: NextRequest): Promise<Response> {
         const messageId = deletion.key?.id;
         if (!messageId) continue;
         await db
-          .update(whatsappMessages)
+          .update(waMessages)
           .set({ status: 'deleted' })
-          .where(eq(whatsappMessages.messageId, messageId));
+          .where(eq(waMessages.externalId, messageId));
       }
     }
     return Response.json({ acknowledged: true });

@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { db } from '@/db';
-import { quotationItems, quotations } from '@/db/schema/app';
+import { quotationItems, quotations } from '@/db/schema';
 import {
   calculateTotals,
   formatDocumentNumber,
@@ -22,16 +22,16 @@ const quotationItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
+const quotationStatusSchema = z.enum(['draft', 'sent', 'accepted', 'rejected', 'expired']);
+
 const quotationSchema = z.object({
   customerId: z.string().uuid(),
-  ticketId: z.string().uuid().optional().nullable(),
-  quotationNumber: z.string().optional(),
+  number: z.string().optional(),
   validUntil: z.string(),
-  status: z.string().default('draft'),
-  taxRate: z.number().default(6),
+  status: quotationStatusSchema.default('draft'),
+  taxRate: z.number().default(0),
   notes: z.string().optional(),
   terms: z.string().optional(),
-  createdBy: z.string().uuid().optional(),
   items: z.array(quotationItemSchema).min(1, 'At least one line item is required'),
 });
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const data = parsed.data;
   const { subtotal, taxAmount, total } = calculateTotals(data.items, data.taxRate);
-  const quotationNumber = data.quotationNumber ?? formatDocumentNumber('QUO');
+  const quotationNumber = data.number ?? formatDocumentNumber('QUO');
   const validUntil = new Date(data.validUntil);
 
   try {
@@ -79,18 +79,16 @@ export async function POST(request: NextRequest): Promise<Response> {
       const [quotation] = await tx
         .insert(quotations)
         .values({
-          quotationNumber,
+          number: quotationNumber,
           customerId: data.customerId,
-          ticketId: data.ticketId ?? null,
           validUntil,
-          status: data.status ?? 'draft',
+          status: data.status,
           subtotal: toPgNumeric(subtotal),
           taxRate: toPgNumeric(data.taxRate),
           taxAmount: toPgNumeric(taxAmount),
           total: toPgNumeric(total),
           notes: data.notes,
           terms: data.terms,
-          createdBy: data.createdBy ?? null,
         })
         .returning();
 
@@ -106,7 +104,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           quantity: item.quantity,
           unitPrice: toPgNumeric(item.unitPrice),
           discount: toPgNumeric(item.discount ?? 0),
-          totalPrice: toPgNumeric(item.quantity * item.unitPrice - (item.discount ?? 0)),
+          total: toPgNumeric(item.quantity * item.unitPrice - (item.discount ?? 0)),
         })),
       );
 
@@ -123,7 +121,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       const validUntilFormatted = quotationWithRelations.validUntil
         ? new Date(quotationWithRelations.validUntil).toLocaleDateString('en-MY')
         : '';
-      const message = `Halo ${quotationWithRelations.customer.name}! Quotation ${quotationWithRelations.quotationNumber} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
+      const message = `Halo ${quotationWithRelations.customer.name}! Quotation ${quotationWithRelations.number} berjumlah ${totalFormatted}. Sah sehingga ${validUntilFormatted}. Balas mesej ini untuk sebarang pertanyaan.`;
 
       try {
         await sendWhatsAppTextMessage(

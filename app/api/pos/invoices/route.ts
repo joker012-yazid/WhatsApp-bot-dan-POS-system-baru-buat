@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import { db } from '@/db';
-import { invoiceItems, invoices } from '@/db/schema/app';
+import { invoiceItems, invoices } from '@/db/schema';
 import {
   calculateTotals,
   formatDocumentNumber,
@@ -22,18 +22,18 @@ const invoiceItemSchema = z.object({
   discount: z.number().nonnegative().default(0),
 });
 
+const invoiceStatusSchema = z.enum(['draft', 'sent', 'due', 'overdue', 'paid', 'void']);
+
 const invoiceSchema = z.object({
   customerId: z.string().uuid(),
-  ticketId: z.string().uuid().optional().nullable(),
   quotationId: z.string().uuid().optional().nullable(),
-  invoiceNumber: z.string().optional(),
-  invoiceDate: z.string().optional(),
-  dueDate: z.string(),
-  status: z.string().default('draft'),
-  taxRate: z.number().default(6),
+  number: z.string().optional(),
+  issuedAt: z.string().optional(),
+  dueAt: z.string().optional(),
+  status: invoiceStatusSchema.default('draft'),
+  taxRate: z.number().default(0),
+  paidTotal: z.number().nonnegative().optional(),
   notes: z.string().optional(),
-  paymentMethod: z.string().optional(),
-  createdBy: z.string().uuid().optional(),
   items: z.array(invoiceItemSchema).min(1, 'At least one line item is required'),
 });
 
@@ -73,30 +73,30 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   const data = parsed.data;
   const { subtotal, taxAmount, total } = calculateTotals(data.items, data.taxRate);
-  const invoiceNumber = data.invoiceNumber ?? formatDocumentNumber('INV');
-  const invoiceDate = data.invoiceDate ? new Date(data.invoiceDate) : new Date();
-  const dueDate = new Date(data.dueDate);
+  const invoiceNumber = data.number ?? formatDocumentNumber('INV');
+  const issuedAt = data.issuedAt ? new Date(data.issuedAt) : new Date();
+  const dueAt = data.dueAt ? new Date(data.dueAt) : null;
+  const paidTotal = Math.max(0, data.paidTotal ?? 0);
+  const balanceValue = Math.max(0, total - paidTotal);
 
   try {
     const createdInvoice = await db.transaction(async (tx) => {
       const [invoice] = await tx
         .insert(invoices)
         .values({
-          invoiceNumber,
+          number: invoiceNumber,
           customerId: data.customerId,
-          ticketId: data.ticketId ?? null,
           quotationId: data.quotationId ?? null,
-          invoiceDate,
-          dueDate,
-          status: data.status ?? 'draft',
+          issuedAt,
+          dueAt,
+          status: data.status,
           subtotal: toPgNumeric(subtotal),
           taxRate: toPgNumeric(data.taxRate),
           taxAmount: toPgNumeric(taxAmount),
           total: toPgNumeric(total),
-          paidAmount: toPgNumeric(0),
+          paidTotal: toPgNumeric(paidTotal),
+          balance: toPgNumeric(balanceValue),
           notes: data.notes,
-          paymentMethod: data.paymentMethod,
-          createdBy: data.createdBy ?? null,
         })
         .returning();
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest): Promise<Response> {
           quantity: item.quantity,
           unitPrice: toPgNumeric(item.unitPrice),
           discount: toPgNumeric(item.discount ?? 0),
-          totalPrice: toPgNumeric(item.quantity * item.unitPrice - (item.discount ?? 0)),
+          total: toPgNumeric(item.quantity * item.unitPrice - (item.discount ?? 0)),
         })),
       );
 
@@ -126,10 +126,10 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     if (invoiceWithRelations.customer.phone) {
       const totalFormatted = currencyFormatter.format(invoiceWithRelations.total);
-      const dueDateFormatted = invoiceWithRelations.dueDate
-        ? new Date(invoiceWithRelations.dueDate).toLocaleDateString('en-MY')
+      const dueDateFormatted = invoiceWithRelations.dueAt
+        ? new Date(invoiceWithRelations.dueAt).toLocaleDateString('en-MY')
         : '';
-      const message = `Halo ${invoiceWithRelations.customer.name}! Invois ${invoiceWithRelations.invoiceNumber} berjumlah ${totalFormatted}. Tarikh akhir: ${dueDateFormatted}. Sila hubungi kami jika perlukan bantuan.`;
+      const message = `Halo ${invoiceWithRelations.customer.name}! Invois ${invoiceWithRelations.number} berjumlah ${totalFormatted}. Tarikh akhir: ${dueDateFormatted}. Sila hubungi kami jika perlukan bantuan.`;
 
       try {
         await sendWhatsAppTextMessage(
