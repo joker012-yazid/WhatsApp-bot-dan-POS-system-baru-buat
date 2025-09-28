@@ -152,7 +152,7 @@ function drawKeyValue(
 function drawLineItems(
   doc: PDFDocument,
   startY: number,
-  items: Array<{ description: string; quantity: number; unitPrice: number; totalPrice: number }>,
+  items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>,
 ): number {
   const columns = {
     description: doc.page.margins.left,
@@ -174,7 +174,7 @@ function drawLineItems(
     doc.text(item.description, columns.description, currentY, { width: 260 });
     doc.text(String(item.quantity), columns.quantity, currentY, { width: 40, align: 'right' });
     doc.text(formatCurrency(item.unitPrice), columns.unitPrice, currentY, { width: 70, align: 'right' });
-    doc.text(formatCurrency(item.totalPrice), columns.total, currentY, { width: 90, align: 'right' });
+    doc.text(formatCurrency(item.total), columns.total, currentY, { width: 90, align: 'right' });
     currentY += 16;
   });
 
@@ -234,7 +234,7 @@ async function renderPosDocument(
   subtitle: string,
   leftDetails: Array<{ label: string; value: string }>,
   rightDetails: Array<{ label: string; value: string }>,
-  items: Array<{ description: string; quantity: number; unitPrice: number; totalPrice: number }>,
+  items: Array<{ description: string; quantity: number; unitPrice: number; total: number }>,
   summaryRows: Array<{ label: string; value: string; emphasize?: boolean }>,
   extras?: Array<{ title: string; content: string }>,
   fileName?: string,
@@ -284,15 +284,15 @@ async function renderPosDocument(
 }
 
 export async function renderInvoicePdf(invoice: InvoiceWithRelations): Promise<GeneratedPdf> {
-  const subtitle = `${invoice.invoiceNumber} • ${formatDateValue(invoice.invoiceDate)}`;
+  const subtitle = `${invoice.number} • ${formatDateValue(invoice.issuedAt)}`;
   const leftDetails = [
     { label: 'Customer', value: invoice.customer.name },
     { label: 'Phone', value: invoice.customer.phone ?? '-' },
     { label: 'Email', value: invoice.customer.email ?? '-' },
   ];
   const rightDetails = [
-    { label: 'Invoice Date', value: formatDateValue(invoice.invoiceDate) },
-    { label: 'Due Date', value: formatDateValue(invoice.dueDate) },
+    { label: 'Invoice Date', value: formatDateValue(invoice.issuedAt) },
+    { label: 'Due Date', value: formatDateValue(invoice.dueAt) },
     { label: 'Status', value: invoice.status },
   ];
 
@@ -300,7 +300,7 @@ export async function renderInvoicePdf(invoice: InvoiceWithRelations): Promise<G
     { label: 'Subtotal', value: formatCurrency(invoice.subtotal) },
     { label: `Tax (${invoice.taxRate}% )`, value: formatCurrency(invoice.taxAmount) },
     { label: 'Total', value: formatCurrency(invoice.total), emphasize: true },
-    { label: 'Paid', value: formatCurrency(invoice.paidAmount ?? 0) },
+    { label: 'Paid', value: formatCurrency(invoice.paidTotal ?? 0) },
     { label: 'Balance', value: formatCurrency(invoice.balance ?? 0) },
   ];
 
@@ -317,12 +317,12 @@ export async function renderInvoicePdf(invoice: InvoiceWithRelations): Promise<G
     invoice.items,
     summaryRows,
     extras,
-    `invoice-${invoice.invoiceNumber}.pdf`,
+    `invoice-${invoice.number}.pdf`,
   );
 }
 
 export async function renderQuotationPdf(quotation: QuotationWithRelations): Promise<GeneratedPdf> {
-  const subtitle = `${quotation.quotationNumber} • Valid until ${formatDateValue(quotation.validUntil)}`;
+  const subtitle = `${quotation.number} • Valid until ${formatDateValue(quotation.validUntil)}`;
   const leftDetails = [
     { label: 'Customer', value: quotation.customer.name },
     { label: 'Phone', value: quotation.customer.phone ?? '-' },
@@ -355,6 +355,6 @@ export async function renderQuotationPdf(quotation: QuotationWithRelations): Pro
     quotation.items,
     summaryRows,
     extras,
-    `quotation-${quotation.quotationNumber}.pdf`,
+    `quotation-${quotation.number}.pdf`,
   );
 }

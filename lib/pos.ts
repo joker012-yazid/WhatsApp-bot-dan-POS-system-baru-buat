@@ -1,13 +1,7 @@
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/db';
-import {
-  customers,
-  invoiceItems,
-  invoices,
-  quotationItems,
-  quotations,
-} from '@/db/schema/app';
+import { customers, invoiceItems, invoices, quotationItems, quotations } from '@/db/schema';
 import type {
   InvoiceWithRelations,
   NormalizedInvoice,
@@ -53,7 +47,7 @@ export async function getInvoiceWithRelations(
     throw new Error('An invoice id or number is required');
   }
 
-  const where = id ? eq(invoices.id, id) : eq(invoices.invoiceNumber, number!);
+  const where = id ? eq(invoices.id, id) : eq(invoices.number, number!);
   const [invoice] = await db.select().from(invoices).where(where).limit(1);
   if (!invoice) {
     return null;
@@ -84,7 +78,7 @@ export async function getInvoiceWithRelations(
     taxRate: toNumber(invoice.taxRate),
     taxAmount: toNumber(invoice.taxAmount),
     total: toNumber(invoice.total),
-    paidAmount: toNumber(invoice.paidAmount),
+    paidTotal: toNumber(invoice.paidTotal),
     balance: toNullableNumber(invoice.balance),
   };
 
@@ -92,7 +86,7 @@ export async function getInvoiceWithRelations(
     ...item,
     unitPrice: toNumber(item.unitPrice),
     discount: toNumber(item.discount),
-    totalPrice: toNumber(item.totalPrice),
+    total: toNumber(item.total),
   }));
 
   return {
@@ -111,7 +105,7 @@ export async function getQuotationWithRelations(
     throw new Error('A quotation id or number is required');
   }
 
-  const where = id ? eq(quotations.id, id) : eq(quotations.quotationNumber, number!);
+  const where = id ? eq(quotations.id, id) : eq(quotations.number, number!);
   const [quotation] = await db.select().from(quotations).where(where).limit(1);
   if (!quotation) {
     return null;
@@ -144,7 +138,7 @@ export async function getQuotationWithRelations(
     ...item,
     unitPrice: toNumber(item.unitPrice),
     discount: toNumber(item.discount),
-    totalPrice: toNumber(item.totalPrice),
+    total: toNumber(item.total),
   }));
 
   return {
