@@ -1,66 +1,70 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: codeguide-starter-fullstack-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - codeguide-starter-fullstack-network
-
-  # Next.js Application
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: codeguide-starter-fullstack-app
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - DATABASE_URL=${DATABASE_URL}
-      - BETTER_AUTH_SECRET=your-super-secret-key-change-in-production
-      - BETTER_AUTH_URL=http://localhost:3000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - postgres
-    networks:
-      - codeguide-starter-fullstack-network
-
-  # Development database only
-  postgres-dev:
-    image: postgres:16-alpine
-    container_name: codeguide-starter-fullstack-postgres-dev
+    container_name: postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - postgres_dev_data:/var/lib/postgresql/data
-    networks:
-      - codeguide-starter-fullstack-network
-    profiles:
-      - dev
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: ["redis-server", "--save", "20", "1", "--loglevel", "warning"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  wa:
+    build:
+      context: ./wa
+      dockerfile: Dockerfile
+    image: wa-gateway:latest
+    container_name: wa
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      APP_WEBHOOK_URL: http://app:3000/api/wa/webhook
+      LOG_LEVEL: info
+    ports:
+      - "3001:3000"
+    volumes:
+      - wa_store:/app/store
+    depends_on:
+      - app
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_BETTER_AUTH_URL: ${NEXT_PUBLIC_BETTER_AUTH_URL:-http://localhost:3000}
+      REDIS_URL: redis://redis:6379
+      WA_GATEWAY_URL: http://wa:3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+      - wa
 
 volumes:
-  postgres_data:
-    driver: local
-  postgres_dev_data:
-    driver: local
-
-networks:
-  codeguide-starter-fullstack-network:
-    driver: bridge
+  pgdata:
+  redisdata:
+  wa_store:
