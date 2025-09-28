@@ -1,19 +1,19 @@
 import type { InferSelectModel } from 'drizzle-orm';
 
-import { customers, invoices, invoiceItems, quotations, quotationItems } from '@/db/schema';
+import { customers, invoices, invoiceItems, quoteItems, quotes } from '@/db/schema';
 
 export type CustomerRecord = InferSelectModel<typeof customers>;
 export type InvoiceRecord = InferSelectModel<typeof invoices>;
 export type InvoiceItemRecord = InferSelectModel<typeof invoiceItems>;
-export type QuotationRecord = InferSelectModel<typeof quotations>;
-export type QuotationItemRecord = InferSelectModel<typeof quotationItems>;
+export type QuoteRecord = InferSelectModel<typeof quotes>;
+export type QuoteItemRecord = InferSelectModel<typeof quoteItems>;
 
-export interface NormalizedInvoice extends Omit<InvoiceRecord, 'subtotal' | 'taxRate' | 'taxAmount' | 'total' | 'paidTotal' | 'balance'> {
+export interface NormalizedInvoice extends Omit<InvoiceRecord, 'subtotal' | 'taxRate' | 'taxAmount' | 'total' | 'paidAmount' | 'balance'> {
   subtotal: number;
   taxRate: number;
   taxAmount: number;
   total: number;
-  paidTotal: number;
+  paidAmount: number;
   balance: number | null;
 }
 
@@ -23,14 +23,14 @@ export interface NormalizedInvoiceItem extends Omit<InvoiceItemRecord, 'unitPric
   total: number;
 }
 
-export interface NormalizedQuotation extends Omit<QuotationRecord, 'subtotal' | 'taxRate' | 'taxAmount' | 'total'> {
+export interface NormalizedQuote extends Omit<QuoteRecord, 'subtotal' | 'taxRate' | 'taxAmount' | 'total'> {
   subtotal: number;
   taxRate: number;
   taxAmount: number;
   total: number;
 }
 
-export interface NormalizedQuotationItem extends Omit<QuotationItemRecord, 'unitPrice' | 'discount' | 'total'> {
+export interface NormalizedQuoteItem extends Omit<QuoteItemRecord, 'unitPrice' | 'discount' | 'total'> {
   unitPrice: number;
   discount: number;
   total: number;
@@ -38,11 +38,11 @@ export interface NormalizedQuotationItem extends Omit<QuotationItemRecord, 'unit
 
 export interface InvoiceWithRelations extends NormalizedInvoice {
   customer: CustomerRecord;
-  quotation?: NormalizedQuotation | null;
+  quote?: NormalizedQuote | null;
   items: NormalizedInvoiceItem[];
 }
 
-export interface QuotationWithRelations extends NormalizedQuotation {
+export interface QuoteWithRelations extends NormalizedQuote {
   customer: CustomerRecord;
-  items: NormalizedQuotationItem[];
+  items: NormalizedQuoteItem[];
 }

@@ -2,13 +2,13 @@ import { NextRequest } from 'next/server';
 import { z } from 'zod';
 
 import logger from '@/lib/logger';
-import { readGeneratedPdf, renderInvoicePdf, renderQuotationPdf } from '@/lib/pdf';
-import { getInvoiceWithRelations, getQuotationWithRelations } from '@/lib/pos';
+import { readGeneratedPdf, renderInvoicePdf, renderQuotePdf } from '@/lib/pdf';
+import { getInvoiceWithRelations, getQuoteWithRelations } from '@/lib/pos';
 
 export const runtime = 'nodejs';
 
 const pdfRequestSchema = z.object({
-  type: z.enum(['invoice', 'quotation']),
+  type: z.enum(['invoice', 'quote']),
   id: z.string().uuid().optional().nullable(),
   number: z.string().optional().nullable(),
   download: z.boolean().optional(),
@@ -33,11 +33,11 @@ async function handlePdfGeneration(params: PdfRequest): Promise<Response> {
     return respondWithPdf(buffer, pdf.fileName, download);
   }
 
-  const quotation = await getQuotationWithRelations({ id, number });
-  if (!quotation) {
-    return Response.json({ error: 'Quotation not found' }, { status: 404 });
+  const quote = await getQuoteWithRelations({ id, number });
+  if (!quote) {
+    return Response.json({ error: 'Quote not found' }, { status: 404 });
   }
-  const pdf = await renderQuotationPdf(quotation);
+  const pdf = await renderQuotePdf(quote);
   const buffer = await readGeneratedPdf(pdf);
   return respondWithPdf(buffer, pdf.fileName, download);
 }

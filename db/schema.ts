@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   integer,
   jsonb,
@@ -11,10 +12,55 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
-const invoiceStatus = pgEnum('invoice_status', ['draft', 'sent', 'due', 'overdue', 'paid', 'void']);
-const quotationStatus = pgEnum('quotation_status', ['draft', 'sent', 'accepted', 'rejected', 'expired']);
-const waDirection = pgEnum('wa_message_direction', ['inbound', 'outbound']);
-const waStatus = pgEnum('wa_message_status', ['pending', 'sent', 'delivered', 'read', 'failed', 'received', 'deleted']);
+import { user } from './auth-schema';
+
+export const ticketStatus = pgEnum('ticket_status', [
+  'pending',
+  'diagnosing',
+  'approved',
+  'in_progress',
+  'completed',
+  'ready_for_pickup',
+  'picked_up',
+  'cancelled',
+]);
+
+export const quoteStatus = pgEnum('quote_status', [
+  'draft',
+  'sent',
+  'accepted',
+  'rejected',
+  'expired',
+  'converted',
+]);
+
+export const invoiceStatus = pgEnum('invoice_status', [
+  'draft',
+  'sent',
+  'paid',
+  'partial',
+  'overdue',
+  'cancelled',
+]);
+
+export const waDirection = pgEnum('wa_direction', ['inbound', 'outbound']);
+
+export const reminderKind = pgEnum('reminder_kind', [
+  'payment_due',
+  'payment_overdue',
+  'service_ready',
+  'custom',
+]);
+
+export const waMessageStatus = pgEnum('wa_message_status', [
+  'pending',
+  'sent',
+  'delivered',
+  'read',
+  'failed',
+  'received',
+  'deleted',
+]);
 
 export const customers = pgTable('customers', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -37,55 +83,99 @@ export const products = pgTable('products', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
-export const quotations = pgTable('quotations', {
+export const tickets = pgTable('tickets', {
   id: uuid('id').defaultRandom().primaryKey(),
-  number: varchar('number', { length: 40 }).notNull().unique(),
+  ticketNumber: varchar('ticket_number', { length: 20 }).notNull().unique(),
   customerId: uuid('customer_id')
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
-  status: quotationStatus('status').default('draft').notNull(),
-  validUntil: date('valid_until').notNull(),
-  subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
-  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('0').notNull(),
-  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
-  total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
-  notes: text('notes'),
-  terms: text('terms'),
+  deviceType: varchar('device_type', { length: 50 }).notNull(),
+  deviceModel: varchar('device_model', { length: 100 }).notNull(),
+  serialNumber: varchar('serial_number', { length: 50 }),
+  problemDescription: text('problem_description').notNull(),
+  status: ticketStatus('status').default('pending').notNull(),
+  priority: varchar('priority', { length: 20 }).default('normal').notNull(),
+  estimatedCost: numeric('estimated_cost', { precision: 10, scale: 2 }),
+  actualCost: numeric('actual_cost', { precision: 10, scale: 2 }),
+  estimatedCompletionDate: date('estimated_completion_date'),
+  technicianNotes: text('technician_notes'),
+  assignedTo: text('assigned_to').references(() => user.id, { onDelete: 'set null' }),
+  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
-export const quotationItems = pgTable('quotation_items', {
+export const diagnostics = pgTable('diagnostics', {
   id: uuid('id').defaultRandom().primaryKey(),
-  quotationId: uuid('quotation_id')
+  ticketId: uuid('ticket_id')
     .notNull()
-    .references(() => quotations.id, { onDelete: 'cascade' }),
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  technicianId: text('technician_id').references(() => user.id, { onDelete: 'set null' }),
+  summary: text('summary').notNull(),
+  findings: text('findings'),
+  recommendedActions: text('recommended_actions'),
+  estimatedCost: numeric('estimated_cost', { precision: 10, scale: 2 }),
+  approved: boolean('approved').default(false).notNull(),
+  approvedBy: text('approved_by').references(() => user.id, { onDelete: 'set null' }),
+  approvedAt: timestamp('approved_at', { withTimezone: false }),
+  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const quotes = pgTable('quotes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  number: varchar('quote_number', { length: 40 }).notNull().unique(),
+  customerId: uuid('customer_id')
+    .notNull()
+    .references(() => customers.id, { onDelete: 'cascade' }),
+  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  status: quoteStatus('status').default('draft').notNull(),
+  validUntil: date('valid_until').notNull(),
+  subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
+  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
+  taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
+  total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
+  notes: text('notes'),
+  terms: text('terms'),
+  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const quoteItems = pgTable('quote_items', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteId: uuid('quote_id')
+    .notNull()
+    .references(() => quotes.id, { onDelete: 'cascade' }),
   productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
   description: text('description').notNull(),
   quantity: integer('quantity').notNull(),
   unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
   discount: numeric('discount', { precision: 12, scale: 2 }).default('0').notNull(),
-  total: numeric('total', { precision: 12, scale: 2 }).notNull(),
+  total: numeric('total_price', { precision: 12, scale: 2 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
 export const invoices = pgTable('invoices', {
   id: uuid('id').defaultRandom().primaryKey(),
-  number: varchar('number', { length: 40 }).notNull().unique(),
+  number: varchar('invoice_number', { length: 40 }).notNull().unique(),
   customerId: uuid('customer_id')
     .notNull()
     .references(() => customers.id, { onDelete: 'cascade' }),
-  quotationId: uuid('quotation_id').references(() => quotations.id, { onDelete: 'set null' }),
+  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  quoteId: uuid('quote_id').references(() => quotes.id, { onDelete: 'set null' }),
   status: invoiceStatus('status').default('draft').notNull(),
-  issuedAt: date('issued_at').defaultNow().notNull(),
-  dueAt: date('due_at'),
+  issuedAt: date('invoice_date').defaultNow().notNull(),
+  dueAt: date('due_date'),
   subtotal: numeric('subtotal', { precision: 12, scale: 2 }).default('0').notNull(),
-  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('0').notNull(),
+  taxRate: numeric('tax_rate', { precision: 5, scale: 2 }).default('6.00').notNull(),
   taxAmount: numeric('tax_amount', { precision: 12, scale: 2 }).default('0').notNull(),
   total: numeric('total', { precision: 12, scale: 2 }).default('0').notNull(),
-  paidTotal: numeric('paid_total', { precision: 12, scale: 2 }).default('0').notNull(),
+  paidAmount: numeric('paid_amount', { precision: 12, scale: 2 }).default('0').notNull(),
   balance: numeric('balance', { precision: 12, scale: 2 }),
+  paymentMethod: varchar('payment_method', { length: 20 }),
   notes: text('notes'),
+  createdBy: text('created_by').references(() => user.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow().notNull(),
 });
@@ -100,18 +190,47 @@ export const invoiceItems = pgTable('invoice_items', {
   quantity: integer('quantity').notNull(),
   unitPrice: numeric('unit_price', { precision: 12, scale: 2 }).notNull(),
   discount: numeric('discount', { precision: 12, scale: 2 }).default('0').notNull(),
-  total: numeric('total', { precision: 12, scale: 2 }).notNull(),
+  total: numeric('total_price', { precision: 12, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const ticketUpdates = pgTable('ticket_updates', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ticketId: uuid('ticket_id')
+    .notNull()
+    .references(() => tickets.id, { onDelete: 'cascade' }),
+  updateType: varchar('update_type', { length: 50 }).notNull(),
+  description: text('description'),
+  imageUrl: text('image_url'),
+  updatedBy: text('updated_by')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
 });
 
 export const waMessages = pgTable('wa_messages', {
   id: uuid('id').defaultRandom().primaryKey(),
   customerId: uuid('customer_id').references(() => customers.id, { onDelete: 'set null' }),
-  sessionId: varchar('session_id', { length: 255 }).notNull(),
-  externalId: varchar('external_id', { length: 255 }),
+  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  sessionId: varchar('session_id', { length: 100 }).notNull(),
+  messageId: varchar('message_id', { length: 100 }),
   direction: waDirection('direction').notNull(),
-  status: waStatus('status').default('pending').notNull(),
-  body: text('body').notNull(),
+  status: waMessageStatus('status').default('pending').notNull(),
+  body: text('message_content').notNull(),
+  mediaType: varchar('media_type', { length: 20 }),
+  mediaUrl: text('media_url'),
+  sentAt: timestamp('timestamp', { withTimezone: false }).defaultNow().notNull(),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
+});
+
+export const reminderLog = pgTable('reminder_log', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  invoiceId: uuid('invoice_id').references(() => invoices.id, { onDelete: 'set null' }),
+  ticketId: uuid('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  waMessageId: uuid('wa_message_id').references(() => waMessages.id, { onDelete: 'set null' }),
+  kind: reminderKind('kind').notNull(),
   sentAt: timestamp('sent_at', { withTimezone: false }).defaultNow().notNull(),
   metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: false }).defaultNow().notNull(),
 });
