@@ -23,6 +23,11 @@ interface PostOutboundPayload {
   metadata?: Record<string, unknown>;
 }
 
+export interface SendWhatsAppResponse {
+  messageId?: string;
+  status?: string;
+}
+
 const DEFAULT_ATTEMPTS = 3;
 const DEFAULT_BACKOFF_MS = 500;
 
@@ -98,7 +103,7 @@ export function parseRemoteJid(remoteJid: string): {
 export async function postOutboundMessage(
   payload: PostOutboundPayload,
   options?: SendOptions,
-): Promise<void> {
+): Promise<SendWhatsAppResponse> {
   const endpoint = createEndpoint();
   const attempts = Math.max(1, options?.attempts ?? DEFAULT_ATTEMPTS);
   const backoffMs = Math.max(0, options?.backoffMs ?? DEFAULT_BACKOFF_MS);
@@ -131,14 +136,26 @@ export async function postOutboundMessage(
         throw error;
       }
 
+      const data = (await response
+        .json()
+        .catch(() => null)) as
+        | { success?: boolean; messageId?: string; status?: string }
+        | null;
+
+      const successStatus = typeof data?.status === 'string' ? data.status : data?.success ? 'sent' : undefined;
+      const messageId = typeof data?.messageId === 'string' && data.messageId ? data.messageId : undefined;
+
       logger.info({
         to: payload.to,
         attempt,
         metadata: payload.metadata,
-        status: 'delivered',
+        status: successStatus ?? 'sent',
       }, 'WhatsApp outbound message sent');
 
-      return;
+      return {
+        status: successStatus,
+        messageId,
+      };
     } catch (error) {
       lastError = error;
       const logMethod = attempt >= attempts ? 'error' : 'warn';
@@ -167,7 +184,7 @@ export async function postOutboundMessage(
 export async function sendWhatsAppTextMessage(
   payload: SendWhatsAppMessagePayload,
   options?: SendOptions,
-): Promise<void> {
+): Promise<SendWhatsAppResponse> {
   const to = ensureWhatsAppJid(payload.to);
   return postOutboundMessage({
     to,
