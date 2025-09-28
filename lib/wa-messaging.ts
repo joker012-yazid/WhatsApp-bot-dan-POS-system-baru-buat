@@ -6,10 +6,14 @@ import { ensureWhatsAppJid, normalizePhoneNumber, sendWhatsAppTextMessage } from
 export type TicketWorkflowStage =
   | 'intake_ack'
   | 'diagnosis_summary'
+  | 'awaiting_approval'
   | 'diagnosis_approval'
+  | 'repair_updates'
   | 'repair_update'
+  | 'done_invoice'
   | 'pickup_ready'
   | 'pickup_complete'
+  | 'review_reminder'
 
 export interface TicketWorkflowMessage {
   customerId: string
@@ -31,10 +35,29 @@ export async function sendTicketWorkflowWhatsAppMessage(payload: TicketWorkflowM
   const sessionId = normalized.replace(/^\+/, '')
   const sentAt = new Date()
 
+  const normalizedStage =
+    payload.stage === 'diagnosis_approval'
+      ? 'awaiting_approval'
+      : payload.stage === 'repair_update'
+        ? 'repair_updates'
+        : payload.stage
+
+  const existingSop =
+    payload.metadata && typeof payload.metadata === 'object' && 'sop' in payload.metadata
+      ? payload.metadata.sop
+      : null
+
+  const sopMetadata = {
+    stage: normalizedStage,
+    ticketId: payload.ticketId,
+    ...(existingSop && typeof existingSop === 'object' ? existingSop : {}),
+  }
+
   const metadata = {
     stage: payload.stage,
     ticketId: payload.ticketId,
     ...payload.metadata,
+    sop: sopMetadata,
   }
 
   try {
