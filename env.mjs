@@ -22,6 +22,12 @@ export const envSchema = z.object({
     .string({ required_error: 'FILES_DIR is required' })
     .min(1)
     .transform((dir) => path.resolve(dir)),
+  ENABLE_TICKET_APPROVAL_REMINDERS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  TICKET_APPROVAL_REMINDER_CRON: z.string().default('0 9 * * *'),
+  TICKET_AWAITING_APPROVAL_STATUS: z.string().default('pending'),
 });
 
 const env = envSchema.parse(process.env);

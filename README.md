@@ -98,7 +98,20 @@ POSTGRES_PASSWORD=postgres
 BETTER_AUTH_SECRET=your_secret_key_here
 BETTER_AUTH_URL=http://localhost:3000
 NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+
+# Scheduler / Messaging
+ENABLE_TICKET_APPROVAL_REMINDERS=false
+TICKET_APPROVAL_REMINDER_CRON="0 9 * * *"
+# Update this to match the status value used for tickets awaiting approval
+TICKET_AWAITING_APPROVAL_STATUS=awaiting_approval
 ```
+
+### Ticket approval reminder scheduler
+
+- The reminder cron is disabled by default. Set `ENABLE_TICKET_APPROVAL_REMINDERS=true` in production to activate it.
+- `TICKET_APPROVAL_REMINDER_CRON` accepts a standard cron expression (defaults to running once per day at 09:00 server time).
+- `TICKET_AWAITING_APPROVAL_STATUS` must match the ticket status stored in the database that represents "awaiting approval" (for many installations this is `awaiting_approval`).
+- When enabled, the scheduler queues WhatsApp reminders for tickets that have been awaiting approval for 1, 20, and 30 days. It stores entries in `reminder_log` to prevent duplicate sends.
 
 ## Features
 
