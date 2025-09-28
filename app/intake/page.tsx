@@ -335,17 +335,25 @@ export default function IntakePage() {
                 control={form.control}
                 name="termsAccepted"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isSubmitting} />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-base">Saya bersetuju dengan terma servis</FormLabel>
-                      <p className="text-sm text-muted-foreground">
-                        Dengan menghantar borang ini, saya mengesahkan maklumat adalah tepat dan bersetuju dengan terma SOP
-                        pembaikan.
-                      </p>
+                  <FormItem className="flex flex-col gap-2 rounded-md border p-4">
+                    <div className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(value) => field.onChange(value === true)}
+                          disabled={isSubmitting}
+                          aria-required
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-base">Saya bersetuju dengan terma servis</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Dengan menghantar borang ini, saya mengesahkan maklumat adalah tepat dan bersetuju dengan terma SOP
+                          pembaikan.
+                        </p>
+                      </div>
                     </div>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
