@@ -5,6 +5,8 @@ import {
   timestamp,
 } from 'drizzle-orm/pg-core';
 
+export const SYSTEM_USER_ID = 'system_service_user';
+
 export const user = pgTable('user', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),

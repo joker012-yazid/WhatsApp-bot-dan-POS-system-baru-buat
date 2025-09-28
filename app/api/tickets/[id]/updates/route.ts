@@ -3,8 +3,10 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '@/db'
+import { SYSTEM_USER_ID, user } from '@/db/auth-schema'
 import { ticketUpdates, tickets } from '@/db/schema'
 import logger from '@/lib/logger'
+import { auth } from '@/lib/auth'
 import { getTicketById } from '@/lib/tickets'
 import { sendTicketWorkflowWhatsAppMessage } from '@/lib/wa-messaging'
 import { toPgNumeric } from '@/lib/pos'
@@ -34,7 +36,11 @@ const updateSchema = z.object({
   imageUrl: z.string().url().optional(),
   status: z.enum(statusOptions).optional(),
   actualCost: z.number().nonnegative().optional(),
-  updatedBy: z.string().optional(),
+  updatedBy: z
+    .string()
+    .min(1, 'Updated by is required')
+    .transform((value) => value.trim())
+    .optional(),
   notify: z.boolean().default(true),
 })
 
@@ -79,6 +85,55 @@ export async function POST(
   const data = parsed.data
   const now = new Date()
 
+  const sessionResult = await auth.api
+    .getSession({ headers: request.headers })
+    .catch((error) => {
+      logger.warn({ err: error, ticketId }, 'Failed to resolve session for ticket update request')
+      return null
+    })
+
+  const sessionUserId = sessionResult?.user?.id ?? null
+
+  if (sessionUserId && data.updatedBy && sessionUserId !== data.updatedBy) {
+    logger.warn(
+      { ticketId, sessionUserId, requestedUserId: data.updatedBy },
+      'Ignoring mismatched updatedBy from payload in favour of session identity',
+    )
+  }
+
+  const candidates = [
+    sessionUserId,
+    sessionUserId ? null : data.updatedBy,
+    sessionUserId || data.updatedBy ? null : ticket.createdBy,
+    SYSTEM_USER_ID,
+  ] as const
+
+  let resolvedUserId: string | null = null
+  const checked = new Set<string>()
+
+  for (const candidate of candidates) {
+    if (!candidate || checked.has(candidate)) {
+      continue
+    }
+    checked.add(candidate)
+
+    const [record] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.id, candidate))
+      .limit(1)
+
+    if (record) {
+      resolvedUserId = record.id
+      break
+    }
+  }
+
+  if (!resolvedUserId) {
+    logger.error({ ticketId }, 'Failed to resolve a valid user for ticket update')
+    return Response.json({ error: 'Unable to determine ticket update actor' }, { status: 500 })
+  }
+
   try {
     const record = await db.transaction(async (tx) => {
       const insertValues: TicketUpdateInsert = {
@@ -86,7 +141,7 @@ export async function POST(
         updateType: data.updateType,
         description: data.description,
         imageUrl: data.imageUrl,
-        updatedBy: data.updatedBy ?? ticket.createdBy ?? 'system',
+        updatedBy: resolvedUserId,
       }
 
       const [saved] = await tx.insert(ticketUpdates).values(insertValues).returning()

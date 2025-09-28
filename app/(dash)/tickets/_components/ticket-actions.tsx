@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useSession } from "@/lib/auth-client"
 
 interface TicketActionsProps {
   ticketId: string
@@ -42,18 +43,32 @@ export function TicketActions(props: TicketActionsProps) {
   const router = useRouter()
   const [pendingAction, setPendingAction] = useState<ActionKey | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const sessionState = useSession()
+  const operatorId = sessionState.data?.user?.id ?? null
 
-  async function runAction(action: ActionKey, request: RequestInit & { endpoint: string }) {
+  async function runAction(
+    action: ActionKey,
+    request: { endpoint: string; payload: Record<string, unknown>; includeOperator?: boolean },
+  ) {
     setPendingAction(action)
     setActionError(null)
 
     try {
+      if (request.includeOperator && !operatorId) {
+        setActionError("Sesi operator diperlukan untuk mengemas kini tiket.")
+        return
+      }
+
+      const payload = request.includeOperator
+        ? { ...request.payload, updatedBy: operatorId }
+        : request.payload
+
       const response = await fetch(request.endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",
         },
-        body: request.body,
+        body: JSON.stringify(payload),
         cache: "no-store",
       })
 
@@ -95,15 +110,16 @@ export function TicketActions(props: TicketActionsProps) {
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"
-          disabled={pendingAction !== null}
+          disabled={pendingAction !== null || sessionState.isPending}
           onClick={() =>
             runAction("begin-diagnosis", {
               endpoint: `/api/tickets/${props.ticketId}/updates`,
-              body: JSON.stringify({
+              payload: {
                 updateType: "status_change",
                 description: `Teknisi sedang memulakan diagnosis untuk tiket #${props.ticketNumber}.`,
                 status: "diagnosed",
-              }),
+              },
+              includeOperator: true,
             })
           }
         >
@@ -115,11 +131,11 @@ export function TicketActions(props: TicketActionsProps) {
           onClick={() =>
             runAction("send-diagnosis", {
               endpoint: `/api/tickets/${props.ticketId}/diagnose`,
-              body: JSON.stringify({
+              payload: {
                 summary: derivedSummary,
                 recommendedActions: derivedActions,
                 estimatedCost: derivedEstimate,
-              }),
+              },
             })
           }
         >
@@ -131,13 +147,13 @@ export function TicketActions(props: TicketActionsProps) {
           onClick={() =>
             runAction("approve-repair", {
               endpoint: `/api/tickets/${props.ticketId}/diagnose`,
-              body: JSON.stringify({
+              payload: {
                 summary: `Pelanggan meluluskan pembaikan untuk tiket #${props.ticketNumber}.`,
                 recommendedActions: derivedActions,
                 estimatedCost: derivedEstimate,
                 approved: true,
                 approvalNotes: "Kami akan mula membaiki sebaik sahaja alat ganti disediakan.",
-              }),
+              },
             })
           }
         >
@@ -145,16 +161,17 @@ export function TicketActions(props: TicketActionsProps) {
         </Button>
         <Button
           variant="outline"
-          disabled={pendingAction !== null}
+          disabled={pendingAction !== null || sessionState.isPending}
           onClick={() =>
             runAction("start-repair", {
               endpoint: `/api/tickets/${props.ticketId}/updates`,
-              body: JSON.stringify({
+              payload: {
                 updateType: "progress",
                 description: `Tiket #${props.ticketNumber} kini dalam proses pembaikan aktif.`,
                 status: "repairing",
                 notify: true,
-              }),
+              },
+              includeOperator: true,
             })
           }
         >
@@ -162,15 +179,16 @@ export function TicketActions(props: TicketActionsProps) {
         </Button>
         <Button
           variant="outline"
-          disabled={pendingAction !== null}
+          disabled={pendingAction !== null || sessionState.isPending}
           onClick={() =>
             runAction("send-update", {
               endpoint: `/api/tickets/${props.ticketId}/updates`,
-              body: JSON.stringify({
+              payload: {
                 updateType: "progress",
                 description: `Kemajuan tiket #${props.ticketNumber}: ${props.currentStatus.replaceAll("_", " ")}.`,
                 notify: true,
-              }),
+              },
+              includeOperator: true,
             })
           }
         >
@@ -182,9 +200,9 @@ export function TicketActions(props: TicketActionsProps) {
           onClick={() =>
             runAction("ready-pickup", {
               endpoint: `/api/tickets/${props.ticketId}/pickup`,
-              body: JSON.stringify({
+              payload: {
                 status: "done",
-              }),
+              },
             })
           }
         >
@@ -196,9 +214,9 @@ export function TicketActions(props: TicketActionsProps) {
           onClick={() =>
             runAction("picked-up", {
               endpoint: `/api/tickets/${props.ticketId}/pickup`,
-              body: JSON.stringify({
+              payload: {
                 status: "picked_up",
-              }),
+              },
             })
           }
         >
