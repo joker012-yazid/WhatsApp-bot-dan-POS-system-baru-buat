@@ -5,11 +5,32 @@ import pinoHttp from 'pino-http';
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
-  fetchLatestBaileysVersion
+  fetchLatestBaileysVersion,
+  jidNormalizedUser,
 } from '@adiwajshing/baileys';
 
-const PORT = process.env.PORT || 3000;
-const WEBHOOK_URL = process.env.APP_WEBHOOK_URL;
+const resolvePort = () => {
+  const candidates = [
+    process.env.WA_GATEWAY_PORT,
+    process.env.WA_PORT,
+    process.env.PORT,
+  ].filter(Boolean);
+
+  const fallback = 8080;
+  if (candidates.length === 0) return fallback;
+
+  const parsed = Number.parseInt(candidates[0] ?? '', 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const resolveWebhookUrl = () =>
+  process.env.APP_INBOUND_WEBHOOK_URL ||
+  process.env.APP_WEBHOOK_URL ||
+  process.env.APP_WHATSAPP_WEBHOOK_URL ||
+  '';
+
+const PORT = resolvePort();
+const WEBHOOK_URL = resolveWebhookUrl();
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const httpLogger = pinoHttp({ logger });
@@ -21,17 +42,82 @@ app.use(httpLogger);
 let sock;
 let sockInitPromise;
 
-const sendWebhook = async (eventName, payload) => {
+const extractMessageText = (message = {}) => {
+  if (!message) return null;
+
+  if (typeof message.conversation === 'string' && message.conversation.trim()) {
+    return message.conversation.trim();
+  }
+
+  const extended = message.extendedTextMessage?.text;
+  if (typeof extended === 'string' && extended.trim()) {
+    return extended.trim();
+  }
+
+  const captionSources = [message.imageMessage, message.videoMessage]
+    .map((media) => media?.caption)
+    .filter((caption) => typeof caption === 'string' && caption.trim());
+  if (captionSources.length > 0) {
+    return captionSources[0].trim();
+  }
+
+  const buttonText = message.buttonsResponseMessage?.selectedDisplayText;
+  if (typeof buttonText === 'string' && buttonText.trim()) {
+    return buttonText.trim();
+  }
+
+  return null;
+};
+
+const normalizePhoneNumber = (value) => {
+  if (!value) return '';
+
+  const normalized = jidNormalizedUser(value);
+  const [rawNumber] = normalized.split('@');
+  if (!rawNumber) return '';
+
+  const trimmed = rawNumber.trim();
+  const hasPlus = trimmed.startsWith('+');
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  if (!digitsOnly) return '';
+
+  if (hasPlus) {
+    return `+${digitsOnly}`;
+  }
+
+  if (trimmed.startsWith('00')) {
+    const withoutPrefix = digitsOnly.replace(/^00+/, '');
+    return withoutPrefix ? `+${withoutPrefix}` : '';
+  }
+
+  return digitsOnly;
+};
+
+const ensureWhatsAppJid = (recipient) => {
+  if (!recipient) {
+    throw new Error('Missing WhatsApp recipient');
+  }
+
+  if (recipient.includes('@')) {
+    return jidNormalizedUser(recipient);
+  }
+
+  const normalized = normalizePhoneNumber(recipient);
+  if (!normalized) {
+    throw new Error('Recipient phone number is invalid');
+  }
+
+  return `${normalized.replace(/^\+/, '')}@s.whatsapp.net`;
+};
+
+const sendWebhook = async (payload) => {
   if (!WEBHOOK_URL) {
-    logger.warn({ eventName }, 'Webhook URL not configured, skipping event dispatch');
+    logger.warn({ event: 'messages.upsert' }, 'Webhook URL not configured, skipping event dispatch');
     return;
   }
 
   try {
-    await axios.post(WEBHOOK_URL, {
-      event: eventName,
-      data: payload
-    });
+    await axios.post(WEBHOOK_URL, payload);
   } catch (error) {
     logger.error(
       {
@@ -93,23 +179,26 @@ const connectSocket = async () => {
 
     newSock.ev.on('messages.upsert', async (m) => {
       const [msg] = m.messages || [];
-      if (!msg) return;
+      if (!msg || !msg.key || msg.key.fromMe) return;
 
-      const eventPayload = {
-        type: m.type,
-        key: msg.key,
-        message: msg.message,
-        pushName: msg.pushName,
-        timestamp: msg.messageTimestamp
-      };
+      const { remoteJid } = msg.key;
+      if (!remoteJid || remoteJid.endsWith('@g.us')) {
+        return;
+      }
 
-      await sendWebhook('messages.upsert', eventPayload);
+      const text = extractMessageText(msg.message);
+      if (!text) {
+        return;
+      }
+
+      const from = normalizePhoneNumber(remoteJid);
+      if (!from) {
+        logger.warn({ remoteJid }, 'Unable to normalize sender phone number');
+        return;
+      }
+
+      await sendWebhook({ from, text });
     });
-
-    newSock.ev.on('messages.update', (updates) => sendWebhook('messages.update', updates));
-    newSock.ev.on('messages.delete', (deletes) => sendWebhook('messages.delete', deletes));
-    newSock.ev.on('presence.update', (presence) => sendWebhook('presence.update', presence));
-    newSock.ev.on('contacts.update', (contacts) => sendWebhook('contacts.update', contacts));
 
     sock = newSock;
     sockInitPromise = undefined;
@@ -132,10 +221,10 @@ const ensureSocket = async () => {
 
 app.post('/send', async (req, res) => {
   try {
-    const { to, message } = req.body;
+    const { to, text } = req.body || {};
 
-    if (!to || !message) {
-      res.status(400).json({ error: 'Missing "to" or "message" in request body' });
+    if (!to || !text) {
+      res.status(400).json({ error: 'Missing "to" or "text" in request body' });
       return;
     }
 
@@ -145,7 +234,8 @@ app.post('/send', async (req, res) => {
       return;
     }
 
-    await client.sendMessage(to, { text: message });
+    const jid = ensureWhatsAppJid(to);
+    await client.sendMessage(jid, { text });
     res.json({ success: true });
   } catch (error) {
     logger.error({ err: error }, 'Failed to send message');

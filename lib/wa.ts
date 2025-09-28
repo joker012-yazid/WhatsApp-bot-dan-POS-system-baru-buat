@@ -5,7 +5,7 @@ import logger from '@/lib/logger';
 
 export interface SendWhatsAppMessagePayload {
   to: string;
-  message: string;
+  text: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -19,7 +19,7 @@ export interface SendOptions {
 
 interface PostOutboundPayload {
   to: string;
-  message: string;
+  text: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -35,6 +35,35 @@ function createEndpoint(): URL {
   }
 }
 
+export function normalizePhoneNumber(input: string): string {
+  if (!input) {
+    return '';
+  }
+
+  const withoutDomain = input.includes('@') ? input.split('@')[0] ?? '' : input;
+  const trimmed = withoutDomain.trim();
+  if (!trimmed) {
+    return '';
+  }
+
+  const hasPlus = trimmed.startsWith('+');
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) {
+    return '';
+  }
+
+  if (hasPlus) {
+    return `+${digits}`;
+  }
+
+  if (trimmed.startsWith('00')) {
+    const withoutPrefix = digits.replace(/^00+/, '');
+    return withoutPrefix ? `+${withoutPrefix}` : '';
+  }
+
+  return digits;
+}
+
 export function ensureWhatsAppJid(recipient: string): string {
   if (!recipient) {
     throw new Error('WhatsApp recipient is required');
@@ -44,12 +73,12 @@ export function ensureWhatsAppJid(recipient: string): string {
     return recipient;
   }
 
-  const digits = recipient.replace(/[^0-9+]/g, '');
-  if (!digits) {
+  const normalized = normalizePhoneNumber(recipient);
+  if (!normalized) {
     throw new Error('WhatsApp recipient must include a phone number');
   }
 
-  return `${digits}@s.whatsapp.net`;
+  return `${normalized.replace(/^\+/, '')}@s.whatsapp.net`;
 }
 
 export function parseRemoteJid(remoteJid: string): {
@@ -89,7 +118,7 @@ export async function postOutboundMessage(
         headers: {
           'content-type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ to: payload.to, text: payload.text }),
         cache: 'no-store',
         signal: options?.signal,
       });
@@ -142,7 +171,7 @@ export async function sendWhatsAppTextMessage(
   const to = ensureWhatsAppJid(payload.to);
   return postOutboundMessage({
     to,
-    message: payload.message,
+    text: payload.text,
     metadata: payload.metadata,
   }, options);
 }
